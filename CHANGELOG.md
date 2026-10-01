@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## 0.3.0（2026-10-01）
+
+导入流程傻瓜化：交接包自带接收指引，零依赖。
+
+- 包新增"接收指引"区块（`references/spec.md`）：frontmatter 之后固定 4 行模板，
+  没装技能的 AI 照着做就行；级别为推荐（SHOULD），老包依然合法，
+  `handoff_version` 保持 `1.0` 不变
+- 用户在新工具里只需贴包 + 一句话："这是我的交接包（topmind-handoff 格式），
+  请按包里的接收指引处理。"——不用再背 6 步流程
+- `SKILL.md` 的导入工作流压缩为 3 步（读指引→diff→确认合并），
+  `references/import.md` 保留为完整版并注明"傻瓜版/完整版"关系
+- 修正 `import.md` 冲突裁决第 1 条：逐条按日期比，整包 `generated_at`
+  只表示导出时间，不直接决定单条胜负（之前表述不精确）
+- `README` / `tool-adapters.md` 的导入一句话指令同步更新；
+  模板与示例包带上接收指引区块
+- `spec.md` 增加版本同步提醒：发版 bump 时 `generator` 里的技能版本号
+  与 `package.json` / `SKILL.md` / `README` / `CHANGELOG` 四处保持一致
+
 ## 0.2.0（2026-10-01）
 
 首个公开版本。由内部 `topmind-handoff 0.1.0`（单用户定制）重构为通用开源技能。

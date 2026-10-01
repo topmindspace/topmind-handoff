@@ -1,6 +1,6 @@
 ---
 name: topmind-handoff
-version: 0.2.0
+version: 0.3.0
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),
@@ -67,14 +67,20 @@ Markdown 人可读、机器可解析、随手可粘贴，是今天的最大公�
 
 ### B. 导入（Import）——接收别家工具的交接包并合并
 
-1. **校验**：读 frontmatter（`handoff_version` 是否支持、是否缺失关键节）。
-2. **解析**：把包拆成一条条"主张"（claim）。
-3. **比对**：每条主张 vs 本地已有上下文，分四类——已存在 / 新增 / 冲突 / 已撤回。
-   规则见 `references/import.md`。
-4. **出 diff 请用户确认**：新增直接列，冲突必须人工拍板，已撤回的不复活。
-5. **合并**：按用户确认结果写入本工具的记忆位置
-   （各工具写哪见 `references/tool-adapters.md`）。
-6. **回执**：合并了几条、冲突怎么裁的、哪些没动。
+包自带傻瓜版接收指引（见 `references/spec.md` 的"接收指引区块"），
+用户在新工具里只需贴包 + 一句话：
+
+> "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。"
+
+装了本技能的助手走完整 6 步（校验 → 解析 → 比对 → 确认 → 合并 → 回执），
+规则见 `references/import.md`。核心就三件事：
+
+1. **读指引、做 diff**：逐条对照本地已知信息，分出
+   已存在 / 新增 / 冲突 / 已撤回四类。
+2. **请用户拍板**：新增直接列，冲突必须人工确认，已撤回的不复活。
+   **没确认的不写。**
+3. **合并 + 回执**：按确认结果写入本工具的记忆位置，
+   回执讲清合并了几条、冲突怎么裁的、哪些没动。
 
 ## Output Contract
 
