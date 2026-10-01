@@ -40,7 +40,8 @@ updated: 2026-10-01
 ## The package（交接包）
 
 一份 Markdown 文件 + YAML frontmatter，格式见 `references/spec.md`，
-空模板在 `assets/handoff-template.md`。六节：
+空模板在 `assets/handoff-template.md`，填写示例见 `assets/handoff-example.md`
+（虚构占位数据）。六节：
 
 1. 这个人是谁（Identity） 2. 怎么跟他说话（Communication）
 3. 工作习惯与默认设置（Working habits & defaults） 4. 项目与目标（Projects & goals）

@@ -62,7 +62,8 @@ topmind-handoff/
 │   ├── privacy.md              # 隐私硬线：永不携带清单、脱敏手法、分享警告
 │   └── tool-adapters.md        # 各工具适配：ChatGPT/Claude/Gemini/Copilot/编程 Agent
 ├── assets/
-│   └── handoff-template.md     # 空白交接包模板
+│   ├── handoff-template.md     # 空白交接包模板
+│   └── handoff-example.md      # 填写示例（虚构占位数据）
 ├── CHANGELOG.md
 └── LICENSE (MIT)
 ```
