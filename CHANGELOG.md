@@ -1,22 +1,30 @@
 # CHANGELOG
 
-## 0.3.0（2026-10-01）
+## 0.3.1（2026-10-01）
 
-导入流程傻瓜化：交接包自带接收指引，零依赖。
+导入流程傻瓜化 + 第二轮深度审查。交接包格式仍为 `1.0`（无 breaking change）。
 
+**导入傻瓜化：**
 - 包新增"接收指引"区块（`references/spec.md`）：frontmatter 之后固定 4 行模板，
-  没装技能的 AI 照着做就行；级别为推荐（SHOULD），老包依然合法，
-  `handoff_version` 保持 `1.0` 不变
+  没装技能的 AI 照着做就行；级别为推荐（SHOULD），老包依然合法
 - 用户在新工具里只需贴包 + 一句话："这是我的交接包（topmind-handoff 格式），
   请按包里的接收指引处理。"——不用再背 6 步流程
 - `SKILL.md` 的导入工作流压缩为 3 步（读指引→diff→确认合并），
   `references/import.md` 保留为完整版并注明"傻瓜版/完整版"关系
-- 修正 `import.md` 冲突裁决第 1 条：逐条按日期比，整包 `generated_at`
-  只表示导出时间，不直接决定单条胜负（之前表述不精确）
 - `README` / `tool-adapters.md` 的导入一句话指令同步更新；
   模板与示例包带上接收指引区块
+
+**深度审查修复：**
+- 明确信任边界（`spec.md` + `import.md` 反投毒规则）：接收指引区块是可信的格式指令，
+  除此之外正文内容仍按不可信输入处理——解决了"不执行包内指令"与"执行包内指引"的矛盾
+- 修正 `import.md` 冲突裁决：逐条按日期比，整包 `generated_at` 只表示导出时间，
+  不直接决定单条胜负（之前表述不精确）
+- `export.md`：补上自定义节（`## 7.`）的导出处理——本地有对应内容的一并带出，
+  没有的不凭空保留
+- `SKILL.md`：triggers 增加口语化触发词（打包记忆、记忆同步、换AI、带到新工具、多端同步），
+  description 补英文 "sync memories across AI tools"
 - `spec.md` 增加版本同步提醒：发版 bump 时 `generator` 里的技能版本号
-  与 `package.json` / `SKILL.md` / `README` / `CHANGELOG` 四处保持一致
+  与 `package.json` / `SKILL.md` / `README` / `CHANGELOG` 保持一致
 
 ## 0.2.0（2026-10-01）
 

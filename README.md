@@ -25,7 +25,7 @@ Open Memory Protocol（提案）、W3C AI Agent Memory Interoperability CG（极
 ### 安装
 
 ```bash
-# npm 安装（v0.3.0+）
+# npm 安装（v0.3.1+）
 npm i @topmindspace/topmind-handoff
 # 或直接 clone
 git clone https://github.com/topmindspace/topmind-handoff.git
@@ -46,7 +46,7 @@ git clone https://github.com/topmindspace/topmind-handoff.git
 
 > "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。"
 
-0.3.0+ 的包自带 4 行接收指引，没装技能的 AI 照着做就行。
+0.3.1+ 的包自带 4 行接收指引，没装技能的 AI 照着做就行。
 装了本技能的助手会走完整流程（校验 → 解析 → diff → 确认 → 合并），
 diff 出新增/冲突/已撤回三类，冲突等你拍板后再合并。
 
@@ -74,13 +74,13 @@ topmind-handoff/
 ---
 handoff_version: "1.0"
 generated_at: 2026-10-01T15:30:00+08:00
-generator: "Claude Code + topmind-handoff 0.3.0"
+generator: "Claude Code + topmind-handoff 0.3.1"
 language: zh-CN
 scope: private
 ---
 ```
 
-> **给 AI 的接收指引**：0.3.0+ 的包在 frontmatter 之后自带 4 行固定指引，
+> **给 AI 的接收指引**：0.3.1+ 的包在 frontmatter 之后自带 4 行固定指引，
 > 没装技能的 AI 照着做就行（模板见 `references/spec.md`）。
 
 ```markdown
@@ -103,4 +103,4 @@ scope: private
 
 ## 版本
 
-当前技能版本 `0.3.0`，交接包格式 `1.0`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.3.1`，交接包格式 `1.0`。更新记录见 `CHANGELOG.md`。

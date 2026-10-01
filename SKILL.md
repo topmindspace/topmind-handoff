@@ -1,23 +1,30 @@
 ---
 name: topmind-handoff
-version: 0.3.0
+version: 0.3.1
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),
   or receive a package from another AI tool, diff it against local context and
-  merge safely. 通用跨工具交接：把"这个人是谁、怎么做事、记了什么"
-  导出为一份便携交接包；或接收别家工具的交接包，比对确认后安全合并。
-  Use when 交接手册、导出记忆、用户画像、换工具迁移、新对话同步上下文、
+  merge safely. Sync memories across AI tools. 通用跨工具交接：把"这个人是谁、
+  怎么做事、记了什么"导出为一份便携交接包；或接收别家工具的交接包，
+  比对确认后安全合并。在多个 AI 工具之间同步记忆与偏好。
+  Use when 交接手册、导出记忆、打包记忆、记忆同步、用户画像、交接文档、
+  换工具、换AI、迁移记忆、带到新工具、多端同步、新对话同步上下文、
   定期整理、export profile、import handoff、migrate memories、onboard new agent.
   Do NOT use for 日常单条记忆写入（用各工具自带记忆）、出稿写作、技能安装。
 action_category: organize
 triggers:
   - 交接手册
   - 导出记忆
+  - 打包记忆
+  - 记忆同步
   - 用户画像
   - 交接文档
   - 换工具
+  - 换AI
   - 迁移记忆
+  - 带到新工具
+  - 多端同步
   - 定期整理
   - 同步上下文
   - export handoff
