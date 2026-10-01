@@ -22,6 +22,15 @@ Open Memory Protocol（提案）、W3C AI Agent Memory Interoperability CG（极
 
 ## 快速开始
 
+### 安装
+
+```bash
+# npm 安装（v0.2.0+）
+npm i @topmindspace/topmind-handoff
+# 或直接 clone
+git clone https://github.com/topmindspace/topmind-handoff.git
+```
+
 ### 导出（带走你的上下文）
 
 对你的 AI 助手说：

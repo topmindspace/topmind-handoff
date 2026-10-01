@@ -11,3 +11,7 @@
 - 隐私硬线：永不携带清单、脱敏手法、导出前人工 review 强制步骤
 - 各工具适配：ChatGPT / Claude / Gemini / Copilot / Meta AI / 编程 Agent 文件约定
 - 空白模板 `assets/handoff-template.md`
+- npm 发版：`@topmindspace/topmind-handoff`（package.json 0.2.0，与技能版本同步；
+  GitHub Release + npm 由 tag `v*` 触发，需仓库 secret `NPM_TOKEN`）
+- 工具适配新增：Bot 类/新兴 Agent 通用接入法（WorkBuddy、Muse、Grok bot、Cue、Dots 等；
+  不逐个写死，以"格式是契约，工具是实现"为准）

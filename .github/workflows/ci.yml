@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Privacy scan (no secrets / PII in skill files)
+        run: |
+          set -euo pipefail
+          # 技能本身不得携带任何用户数据：拦截常见凭证与证件号模式
+          if grep -rniE \
+            -e 'github_pat_[A-Za-z0-9_]+' \
+            -e 'sk-[A-Za-z0-9]{16,}' \
+            -e 'ghp_[A-Za-z0-9]{16,}' \
+            -e 'xox[bap]-[A-Za-z0-9-]{10,}' \
+            --include='*.md' --include='*.json' --include='*.yml' --include='*.yaml' \
+            . ; then
+            echo "privacy scan FAILED: possible credential pattern found" >&2
+            exit 1
+          fi
+          echo "privacy scan OK"
+
+      - name: Frontmatter checks
+        run: |
+          set -euo pipefail
+          grep -q '^name: topmind-handoff' SKILL.md
+          SKILL_VER="$(grep -m1 '^version:' SKILL.md | awk '{print $2}')"
+          PKG_VER="$(node -p "require('./package.json').version")"
+          if [[ "$SKILL_VER" != "$PKG_VER" ]]; then
+            echo "version mismatch: SKILL.md=${SKILL_VER} package.json=${PKG_VER}" >&2
+            exit 1
+          fi
+          grep -q 'handoff_version:' assets/handoff-template.md
+          echo "frontmatter OK (skill=${SKILL_VER})"

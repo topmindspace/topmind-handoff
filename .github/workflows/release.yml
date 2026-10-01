@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Fail fast when the tag does not match package.json version: npm publishes
+      # the package.json version, so a skewed tag would permanently desync tag ↔ npm.
+      - name: Verify tag matches package.json version
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          EXPECTED="v$(node -p "require('./package.json').version")"
+          if [[ "$TAG" != "$EXPECTED" ]]; then
+            echo "tag ↔ package.json version mismatch: tag=${TAG} but package.json version=${EXPECTED#v}" >&2
+            echo "Bump package.json version or re-tag before publishing." >&2
+            exit 1
+          fi
+          echo "tag matches package.json version: ${TAG}"
+
+      - name: Build release zip
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          zip -r release-assets/topmind-handoff.zip \
+            SKILL.md references assets README.md LICENSE CHANGELOG.md package.json \
+            -x '.*'
+          ls -la release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+
+      # Publish to npm (keeps npm in sync with the tag).
+      # Requires repository secret NPM_TOKEN (granular token, write on @topmindspace).
+      # Fail loudly when the secret is not configured: publishing the GitHub
+      # Release while silently skipping npm would leave a green-but-incomplete release.
+      - name: Publish to npm (idempotent)
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "NPM_TOKEN not configured — refusing to publish an npm-less release." >&2
+            exit 1
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          PKG="@topmindspace/topmind-handoff"
+          echo "Checking whether ${PKG}@${VERSION} is already on the registry..."
+          if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
+            echo "${PKG}@${VERSION} already on npm — skip publish (exit 0)."
+            exit 0
+          fi
+          echo "Publishing ${PKG}@${VERSION} ..."
+          set +e
+          PUBLISH_LOG="$(mktemp)"
+          npm publish --access public >"$PUBLISH_LOG" 2>&1
+          rc=$?
+          set -e
+          cat "$PUBLISH_LOG"
+          if [ "$rc" -eq 0 ]; then
+            echo "npm publish OK: ${PKG}@${VERSION}"
+            exit 0
+          fi
+          # E409 on re-run usually means an earlier attempt already landed server-side
+          if grep -Eqi 'E409|Cannot publish over previously published|previously staged|EPUBLISHCONFLICT|cannot publish over existing' "$PUBLISH_LOG"; then
+            echo "npm publish reported a conflict for ${PKG}@${VERSION}; re-checking registry..."
+            if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
+              echo "${PKG}@${VERSION} is on npm (published by an earlier attempt) — success."
+              exit 0
+            fi
+            echo "conflict reported but version NOT visible on npm — FAIL." >&2
+            echo "Bump package.json version and re-tag; do not reuse a tag across versions." >&2
+            exit 1
+          fi
+          if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
+            echo "${PKG}@${VERSION} now visible on npm after publish attempt — success."
+            exit 0
+          fi
+          echo "npm publish failed with exit ${rc} (not an already-published conflict)." >&2
+          exit "$rc"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
