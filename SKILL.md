@@ -1,6 +1,6 @@
 ---
 name: topmind-handoff
-version: 0.4.1
+version: 0.4.2
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),
@@ -96,8 +96,10 @@ Markdown 人可读、机器可解析、随手可粘贴，是今天的最大公�
    （除非大版本 breaking 导致格式不兼容）。
 3. **读任务状态**：看第 8 节了解进行中的工作——接续时不重复已完成的步骤，
    不推翻第 8 节里记录的关键决策，有阻塞先看是否已解决。
-4. **请用户拍板**：新增直接列，冲突必须人工确认，已撤回的不复活。
-   **没确认的不写。**
+4. **请用户拍板**：新增直接列（sync 模式下也先列出来过目），冲突必须人工确认，
+   已撤回的不复活。**没确认的不写。**
+5. **Profile 保护**：用户称呼、对智能体的称呼、语言、时区——接收端优先，
+   永不自动覆盖，只提示差异。
 3. **合并 + 回执**：按确认结果写入本工具的记忆位置，
    回执讲清合并了几条、冲突怎么裁的、哪些没动。
 

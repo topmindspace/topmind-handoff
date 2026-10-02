@@ -1,10 +1,11 @@
 ---
 handoff_version: "1.1"
 generated_at: 2026-10-01T10:00:00+08:00
-generator: "示例助手 + topmind-handoff 0.4.1"
+generator: "示例助手 + topmind-handoff 0.4.2"
 subject: "张三"
 language: zh-CN
 scope: private
+mode: migration
 ---
 
 > **给 AI 的接收指引**：这是一份 topmind-handoff 交接包。请：1）通读全文，

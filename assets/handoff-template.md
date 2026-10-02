@@ -1,10 +1,11 @@
 ---
 handoff_version: "1.1"
 generated_at: YYYY-MM-DDTHH:MM:SS+08:00
-generator: "工具名 + topmind-handoff 0.4.1"
+generator: "工具名 + topmind-handoff 0.4.2"
 subject: "称呼（可选，可省略）"
 language: zh-CN
 scope: private
+mode: migration
 skills_manifest:
   - name: 示例技能名
     version: "0.1.0"
