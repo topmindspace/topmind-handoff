@@ -1,6 +1,6 @@
 ---
 name: topmind-handoff
-version: 0.4.0
+version: 0.4.1
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),

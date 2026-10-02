@@ -1,7 +1,7 @@
 ---
-handoff_version: "1.0"
+handoff_version: "1.1"
 generated_at: 2026-10-01T10:00:00+08:00
-generator: "示例助手 + topmind-handoff 0.4.0"
+generator: "示例助手 + topmind-handoff 0.4.1"
 subject: "张三"
 language: zh-CN
 scope: private

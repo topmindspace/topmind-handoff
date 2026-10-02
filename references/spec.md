@@ -9,7 +9,7 @@
 **接收指引**引用块。这是给"没装本技能的 AI"看的傻瓜版导入说明，
 让任何 AI 拿到包就能正确处理，不用用户背流程。
 
-级别：**推荐（SHOULD）**，不是强制。0.4.0+ 生成的包默认都带；
+级别：**推荐（SHOULD）**，不是强制。0.4.1+ 生成的包默认都带；
 老包（1.0 无指引区块）依然合法，接收方降级处理：直接按
 `references/import.md` 的完整流程走，或请用户补一句
 "请按 topmind-handoff 的导入规则处理"。
@@ -50,7 +50,7 @@
 ---
 handoff_version: "1.1"          # 包格式版本。本技能当前生成 1.1（1.0 包仍兼容）
 generated_at: 2026-10-01T15:30:00+08:00   # 生成时间，ISO 8601，带时区
-generator: "Claude Code + topmind-handoff 0.4.0"  # 谁生成的（工具名+技能版本）
+generator: "Claude Code + topmind-handoff 0.4.1"  # 谁生成的（工具名+技能版本）
 subject: "张三"                 # 可选：画像属于谁；可省略
 language: zh-CN                # 包内主要语言：zh-CN / en
 scope: private                 # private：只在用户自己的工具间流转，勿公开
@@ -74,7 +74,7 @@ skills_manifest:               # v1.1 新增（可选）：本次交接依赖的
 - `scope`：目前只有 `private`。拿到包的工具不得把它发给第三方、
   不得用于训练（按各工具自身的数据政策，用户自己负责）。
 - 未知字段：导入方**必须忽略**不认识的 frontmatter 字段，不得报错。
-- `generator` 里带的技能版本号（如 `+ topmind-handoff 0.4.0`）：
+- `generator` 里带的技能版本号（如 `+ topmind-handoff 0.4.1`）：
   发版 bump 时与 `package.json` / `SKILL.md` frontmatter /
   `README` / `CHANGELOG` 四处保持一致（见仓库版本纪律）。
 
