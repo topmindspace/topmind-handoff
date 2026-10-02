@@ -1,6 +1,6 @@
 ---
 name: topmind-handoff
-version: 0.3.1
+version: 0.4.0
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),
@@ -35,7 +35,7 @@ compatibility: Any AI agent with file read/write. No network, no SDK, no account
 author: TopMindSpace
 license: MIT
 homepage: https://github.com/topmindspace/topmind-handoff
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 # topmind-handoff · 跨工具交接
@@ -46,13 +46,19 @@ updated: 2026-10-01
 
 ## The package（交接包）
 
-一份 Markdown 文件 + YAML frontmatter，格式见 `references/spec.md`，
+一份 Markdown 文件 + YAML frontmatter，格式见 `references/spec.md`（当前 v1.1），
 空模板在 `assets/handoff-template.md`，填写示例见 `assets/handoff-example.md`
-（虚构占位数据）。六节：
+（虚构占位数据）。八节：
 
 1. 这个人是谁（Identity） 2. 怎么跟他说话（Communication）
 3. 工作习惯与默认设置（Working habits & defaults） 4. 项目与目标（Projects & goals）
 5. 事实与记忆（Facts & memories，逐条带日期） 6. 边界与隐私（Boundaries & privacy）
+7. 环境与技能（Environment & skills，v1.1 新增） 8. 进行中的工作（Active work，v1.1 新增）
+
+第 7 节记录本次工作依赖的技能名 + 版本（frontmatter 的 `skills_manifest`
+同步一份机器可读版）；第 8 节记录任务状态 / 阻塞 / 关键决策三个子块。
+两节都可选，但**不要省略**——无内容时写"无特殊技能依赖"/
+"当前无进行中的任务"，让接收方明确知道"已确认无"，而不是"忘记写了"。
 
 为什么是 Markdown 而不是 JSON：2026 年各家工具的导入入口都是"粘贴文本"
 （见 `references/tool-adapters.md`），没有任何生态会认一个新的 JSON schema；
@@ -63,14 +69,15 @@ Markdown 人可读、机器可解析、随手可粘贴，是今天的最大公�
 ### A. 导出（Export）——把本工具的上下文装进包
 
 1. **采集**：读本工具的记忆/画像来源（各工具的来源清单见 `references/tool-adapters.md`）。
-   只读，不写源文件。
+   只读，不写源文件。同时收集：本次工作用到的技能名 + 版本号（写进
+   `skills_manifest`）；当前进行中的任务状态、阻塞、已做决策（写进第 8 节）。
 2. **分类**：每条信息进五桶——持久偏好 / 当前状态 / 项目待办 / 历史经验 / 敏感丢弃。
    细节见 `references/export.md`。
 3. **裁决冲突**：同一事实有多个版本时，以**最新日期证据**为准，旧的不再保留。
 4. **脱敏**：按 `references/privacy.md` 过滤——凭证、token、高敏 PII、他人隐私一律不进包；
    然后**人工过一遍**（给用户看脱敏清单再定稿）。
 5. **落盘交付**：按 `references/spec.md` 写文件（默认 `<称呼>-handoff-YYYYMMDD.md`），
-   回执给用户：路径 + 条目统计（新增/更新/删除）。
+   回执给用户：路径 + 条目统计（新增/更新/删除）+ 技能清单 + 任务状态摘要。
 
 ### B. 导入（Import）——接收别家工具的交接包并合并
 
@@ -80,11 +87,16 @@ Markdown 人可读、机器可解析、随手可粘贴，是今天的最大公�
 > "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。"
 
 装了本技能的助手走完整 6 步（校验 → 解析 → 比对 → 确认 → 合并 → 回执），
-规则见 `references/import.md`。核心就三件事：
+规则见 `references/import.md`。核心就四件事：
 
 1. **读指引、做 diff**：逐条对照本地已知信息，分出
    已存在 / 新增 / 冲突 / 已撤回四类。
-2. **请用户拍板**：新增直接列，冲突必须人工确认，已撤回的不复活。
+2. **技能比对**：对照 `skills_manifest` 检查本地技能——缺失的给安装命令，
+   版本过低的给升级命令，版本更高的通常直接可用。**只提示，不阻断**
+   （除非大版本 breaking 导致格式不兼容）。
+3. **读任务状态**：看第 8 节了解进行中的工作——接续时不重复已完成的步骤，
+   不推翻第 8 节里记录的关键决策，有阻塞先看是否已解决。
+4. **请用户拍板**：新增直接列，冲突必须人工确认，已撤回的不复活。
    **没确认的不写。**
 3. **合并 + 回执**：按确认结果写入本工具的记忆位置，
    回执讲清合并了几条、冲突怎么裁的、哪些没动。
