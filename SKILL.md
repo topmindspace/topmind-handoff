@@ -1,6 +1,6 @@
 ---
 name: topmind-handoff
-version: 0.4.7
+version: 0.4.8
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),
@@ -118,7 +118,7 @@ updated: 2026-10-03
    已配置且用户没说「只本地」：先读云端 `generated_at` 最新的一份，把它当作当前事实；
    它没写清的，才看其他来源各自最新的一份。本环境看得到的照实写进新包，没看到且不矛盾的带上并注明来源，不写成「没有」。
    把包交给用户，并推到 `cloud_path/<package_id>/<package_id>.md`。要带走的小资料放进同一文件夹。
-   只用已有 git / `gh` 凭据；没有就停下，不要让用户把 token 贴进对话。旧文件夹留下，不删除。细节见 `references/export.md`。
+   只用已有 git / `gh` 凭据；没有就停下，不要让用户把 token 贴进对话。同一提交里删掉该 `origin_id` 更旧、且有 `generated_at` 的文件夹（含资料）。其他来源各自最新的留下。README 留下。没有 `generated_at` 的旧包不删，并说明。「只本地」不推也不删。细节见 `references/export.md`。
 
 ### B. 导入（Import）——模型按包判断，技能只补边界
 
@@ -154,7 +154,7 @@ updated: 2026-10-03
    **第 8 节**按任务 id 合并：包里没有的本地任务留下，同一任务说法不同就问，不覆盖。不重复已完成步骤，不推翻已记录决策。确认后才写入接收环境的待办或记忆。
 6. **第 9 节**（项目仓库，不是交接云端）：本地已有同一仓库则先 `git status` / `git diff`，读 diff，冲突先问，不覆盖。
    禁止 `git reset --hard`，禁止 force-push；这次对话里用户没明确要求就不 commit。
-   已配置的私有交接仓库只在 `cloud_path/<package_id>/` 新增交接包，不受本条限制。不删除旧文件夹。
+   已配置的私有交接仓库，导出推送时在同一提交里新增 `cloud_path/<package_id>/`，并只删该来源更旧且有 `generated_at` 的文件夹。接收这一步不另删。不碰项目仓库。
    只有一侧有仓库：克隆或指向 remote，不编造文件。
    两侧都有未提交改动：停下问以哪侧为准，不自动合并代码。
 7. **按 mode**：`migration`（缺省）以全库最新一份为待导入的当前事实，冲突仍须确认，不是整包覆盖。
@@ -162,7 +162,7 @@ updated: 2026-10-03
    包里没有的 id 留本地；墓碑只建议删除；对不上就问。不是整包覆盖。
 8. **没确认的不写。** 确认后写入本工具的记忆位置（见 `references/tool-adapters.md`），
    回执写明合并了什么、冲突怎么裁、哪些没动。
-   若是从云端取的，写明 `origin_id` 和为何是这一份。旧文件夹留下，不删除。
+   若是从云端取的，写明 `origin_id` 和为何是这一份。接收不删云端里的旧包。
 
 ### C. 初始化云端（可选）
 
@@ -171,11 +171,11 @@ updated: 2026-10-03
 1. 问私有 GitHub 仓库（`owner/name`）和目录（不说就 `handoff/`）。
 2. 公开仓库拒绝。确认不了是不是私有就停下问。
 3. 不在包或技能里存 PAT。用用户已有的 git / `gh` 凭据。没有凭据就停下说明，不要让用户把 token 贴进对话。
-4. 记在用户自己的记忆里，不写死路径。配好之后，「帮我做 handoff」默认推送并仍把文件交给用户。用户说「只本地」则不推。
+4. 记在用户自己的记忆里，不写死路径。配好之后，「帮我做 handoff」默认推送并仍把文件交给用户；同一提交里该来源只留最新一份。用户说「只本地」则不推、不删。
 
 ## Output Contract
 
-- 导出：符合 `references/spec.md` 的一份 Markdown，外加定稿前的脱敏 + 仓库/资料短说明。推了云端就写明仓库和路径；只本地就写明没推。
+- 导出：符合 `references/spec.md` 的一份 Markdown，外加定稿前的脱敏 + 仓库/资料短说明。推了云端就写明仓库、路径，以及该来源删了哪些旧文件夹；只本地就写明没推、没删。
 - 导入：三类 diff（新增 / 冲突 / 已撤回）+ 用户确认后的合并回执。从云端取包时写明来源。
 - 不编造版本号、状态、日期、commit。无法核实就标「未核实」。
 
@@ -201,5 +201,5 @@ updated: 2026-10-03
    导出写全本环境看得到的，并把最新一份里没矛盾、本环境没看到的带上，注明来源。不把没看到的写成「没有」。
    定时同步就是再导出一份新文件夹，再按上面接收。
 8. **来源与云端**：`origin_id` 是来源环境，不是密钥，但不放凭据。云端只走私有 Git，不存 token。
-   每次推送是 `cloud_path/<package_id>/`，里面是同名 markdown 和要带走的资料。旧文件夹留下，不删除。
-   不碰公开仓库、`cloud_path` 以外的路径或项目仓库。由当次对话用 git 执行，不是常驻程序。不编造仓库。
+   每次推送是同一提交：新增 `cloud_path/<package_id>/`（同名 markdown 和要带走的资料），并删掉该 `origin_id` 更旧、且有 `generated_at` 的文件夹。最新指该来源 `generated_at` 最新；`package_id` 以 `origin_id` 开头。其他来源各自最新的留下。README 留下。没有 `generated_at` 的旧包不删，并说明。「只本地」不推也不删。
+   不碰公开仓库、`cloud_path` 以外的路径或项目仓库。由当次对话用 git 执行，不是 CI、cron、额外脚本或常驻程序。不编造仓库。
