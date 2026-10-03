@@ -25,7 +25,7 @@ Open Memory Protocol（提案）、W3C AI Agent Memory Interoperability CG（极
 ### 安装
 
 ```bash
-# npm 安装（v0.4.3+）
+# npm 安装（v0.4.4+）
 npm i @topmindspace/topmind-handoff
 # 或直接 clone
 git clone https://github.com/topmindspace/topmind-handoff.git
@@ -46,9 +46,9 @@ git clone https://github.com/topmindspace/topmind-handoff.git
 
 > "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。"
 
-0.4.3+ 的包自带 4 行接收指引，没装技能的 AI 照着做就行。
-装了本技能的助手会走完整流程（校验 → 解析 → diff → 确认 → 合并），
-diff 出新增/冲突/已撤回三类，冲突等你拍板后再合并。
+0.4.4+ 的包自带接收指引，没装技能也能交接。
+装了技能时接收更完整（主张 id、墓碑、仓库 diff、可选私有 Git 云端）。
+冲突等你拍板后再合并。
 
 ## 仓库结构
 
@@ -56,7 +56,7 @@ diff 出新增/冲突/已撤回三类，冲突等你拍板后再合并。
 topmind-handoff/
 ├── SKILL.md                    # 技能本体（精简：目的/流程/输出/纪律）
 ├── references/
-│   ├── spec.md                 # 交接包格式规范 v1.0（frontmatter + 六节）
+│   ├── spec.md                 # 交接包格式规范 v1.1（八节 + 可选第 9 节）
 │   ├── export.md               # 导出工作流：采集→分类→裁决→脱敏→落盘
 │   ├── import.md               # 导入工作流：校验→解析→比对→确认→合并（含反投毒）
 │   ├── privacy.md              # 隐私硬线：永不携带清单、脱敏手法、分享警告
@@ -72,16 +72,16 @@ topmind-handoff/
 
 ```yaml
 ---
-handoff_version: "1.0"
+handoff_version: "1.1"
 generated_at: 2026-10-01T15:30:00+08:00
-generator: "Claude Code + topmind-handoff 0.4.3"
+generator: "Claude Code + topmind-handoff 0.4.4"
 language: zh-CN
 scope: private
 ---
 ```
 
-> **给 AI 的接收指引**：0.4.3+ 的包在 frontmatter 之后自带 4 行固定指引，
-> 没装技能的 AI 照着做就行（模板见 `references/spec.md`）。
+> **给 AI 的接收指引**：0.4.4+ 的包在 frontmatter 之后自带接收指引，
+> 没装技能也能交接（模板见 `references/spec.md`）。建议先安装技能，不装也不停。
 
 ```markdown
 ## 1. 这个人是谁（Identity）
@@ -103,4 +103,4 @@ scope: private
 
 ## 版本
 
-当前技能版本 `0.3.1`，交接包格式 `1.0`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.4.4`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
