@@ -25,7 +25,7 @@ Open Memory Protocol（提案）、W3C AI Agent Memory Interoperability CG（极
 ### 安装
 
 ```bash
-# npm 安装（v0.4.6+）
+# npm 安装（v0.4.7+）
 npm i @topmindspace/topmind-handoff
 # 或直接 clone
 git clone https://github.com/topmindspace/topmind-handoff.git
@@ -74,7 +74,7 @@ topmind-handoff/
 ---
 handoff_version: "1.1"
 generated_at: 2026-10-01T15:30:00+08:00
-generator: "Claude Code + topmind-handoff 0.4.6"
+generator: "Claude Code + topmind-handoff 0.4.7"
 language: zh-CN
 scope: private
 ---
@@ -103,4 +103,4 @@ scope: private
 
 ## 版本
 
-当前技能版本 `0.4.6`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.4.7`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。

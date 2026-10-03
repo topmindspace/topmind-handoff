@@ -1,6 +1,6 @@
 ---
 name: topmind-handoff
-version: 0.4.6
+version: 0.4.7
 description: >-
   Cross-tool user handoff: export working habits, preferences, projects and
   memories into one portable Markdown package (Markdown + YAML frontmatter),
@@ -111,7 +111,9 @@ updated: 2026-10-03
    （是否建议过自行 commit/push、记下的分支 / 短 sha / remote、工作区是否仍脏、
    大文件的云端位置、小资料包相对路径）。用户点头后再落盘。
 7. **落盘**：按 `references/spec.md` 写 `<称呼>-handoff-YYYYMMDD.md`，
-   接收指引按 `language` 从规范照抄中文或英文模板，步骤相同，不混用。回执只给路径、各节条数、`origin_id`、技能清单、第 8 节摘要、第 9 节摘要。
+   接收指引按 `language` 从规范照抄中文或英文模板，步骤相同，不混用。
+   交出去之前核对：`generator` 里的技能版本、`skills_manifest` 里每一条，都是这次落笔前刚读到的（本机技能文件，或发布记录）。读不到就写「未核实」，或不放进清单，不要沿用旧包上的版本。技能已经更新，就新开 `package_id` 和新的 `generated_at`。不要改旧包的指引，却把 `generator` 留在旧版本。
+   回执只给路径、各节条数、`origin_id`、技能清单、第 8 节摘要、第 9 节摘要。
    云端未配置：先问要不要用、私有仓库和目录，不静默推送。公开仓库拒绝。
    已配置且用户没说「只本地」：先读云端 `generated_at` 最新的一份，把它当作当前事实；
    它没写清的，才看其他来源各自最新的一份。本环境看得到的照实写进新包，没看到且不矛盾的带上并注明来源，不写成「没有」。
@@ -188,6 +190,7 @@ updated: 2026-10-03
    见 `references/privacy.md`。
 4. **冲突不替用户拍板**。日期不同可以把较新日期列为建议；同一天或没日期必须问。
    `generated_at` 只选出哪一份包是当前事实，不决定包里某一条谁赢。锚点永不自动覆盖。
+   包上的技能版本必须是当次读到的。对不上就重开一份，不在旧包上留旧版本。
 5. **格式版本**：`handoff_version` 仍为 1.1。遇到不支持的大版本先停下，不强行解析。
    不认识的可选字段忽略，不报错。
 6. **不过度工程**：不搭服务、不装 SDK、不做签名、不写解析器、CRDT、数据库或自动合并代码。不自动安装技能。

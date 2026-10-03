@@ -1,7 +1,7 @@
 ---
 handoff_version: "1.1"
 generated_at: YYYY-MM-DDTHH:MM:SS+08:00
-generator: "工具名 + topmind-handoff 0.4.6"
+generator: "工具名 + topmind-handoff 0.4.7"
 subject: "称呼（可选，可省略）"
 language: zh-CN
 scope: private
