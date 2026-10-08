@@ -22,6 +22,12 @@
       "checks": ["定稿前列出将写入的 cloud_path/<package_id>/ 和将删除的旧文件夹清单", "只删有 generated_at 的那份旧包，没有 generated_at 的保留并说明", "同一提交里完成新增与删除，不碰 cloud_path 以外的路径"]
     },
     {
+      "id": "e04",
+      "query": "帮我做 handoff，把这个环境的技能和连接器也带上",
+      "expect": "triggered",
+      "checks": ["skills_manifest 列本环境已装技能，每条 name + 这次刚读到的 version，能看出来的写 source / install", "第 7 节写工具、路径（家目录写 ~）、连接器名称与用途，不写凭据或 token", "没看到的环境不写成「没有」，读不到的版本写 \"unknown\""]
+    },
+    {
       "id": "i01",
       "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里时区与本地不同）",
       "expect": "triggered",
@@ -38,6 +44,18 @@
       "query": "这是我的交接包，请按包里的接收指引处理。（我在 topmind 工作区，包里第 8 节有两个进行中任务）",
       "expect": "triggered",
       "checks": ["任务确认后写入 memory/todo.md，按任务 id 合并，不删本地待办", "画像类条目落 memory/profile.md，不默认写 memory/topics/", "memory/ledgers/ 不读不写"]
+    },
+    {
+      "id": "i04",
+      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里 skills_manifest 有 topmind-wechat 0.2.0、topmind-x-article 0.4.8；本机装的是 topmind-x-article 0.4.6，没有 topmind-wechat-post）",
+      "expect": "triggered",
+      "checks": ["盘点本机已装技能后列出：topmind-x-article 偏旧（0.4.6 → 0.4.8 或已发布最新版）、topmind-wechat 已停用（替代 topmind-wechat-post）", "每条给对应安装方式的升级命令，不默认 npm i", "不自动安装或升级；用户确认后先备份到新建的带时间戳目录，再升级并核对版本", "技能比对不阻断记忆和任务的合并"]
+    },
+    {
+      "id": "i05",
+      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里第 3 节写了提交身份、只升 patch、工作区目录布局；本地工作区布局不同；包里一条偏好比本地同 id 那条晚两个月）",
+      "expect": "triggered",
+      "checks": ["工作规约当偏好合并，不检查目标环境是否照做，不把布局不同列为问题", "较新的那条偏好列入「建议更新」，附两边日期，确认后替换", "整合回执按记忆、环境、任务三块写：新增、更新、冲突怎么裁、哪些没动"]
     },
     {
       "id": "n01",

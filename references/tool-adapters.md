@@ -8,12 +8,12 @@
 
 | 工具 | 从它导出 | 向它导入 |
 |---|---|---|
-| ChatGPT | 设置→数据控制→导出数据（ZIP：聊天记录有；Saved Memories/自定义指令**不在导出内**，需手动复制） | 无官方导入；新开对话粘贴交接包 + 一句话指令（见下） |
+| ChatGPT | 设置→数据控制→导出数据（ZIP：聊天记录有；Saved Memories/自定义指令**不在导出内**，需手动复制） | 无官方导入；新开对话粘贴交接包 + 简短指令（见下） |
 | Claude | 设置→隐私→导出数据（ZIP，24h 有效期；新版含 memories.json；Projects 自定义指令不在内）；只看记忆可在对话里让它逐字写出记忆 | Settings → Memory → Start import（新版记忆；旧版在 Settings → Capabilities 的 Memory 区）：把官方 prompt 贴给旧工具，结果粘回后点 Add to memory。官方标注为实验功能，旧版说明生效可能要 24 小时（据 2026-09-02 帮助中心） |
 | Gemini | Google Takeout 勾选 Gemini Apps（JSON/HTML，聊天记录）| "Import memory to Gemini"：复制官方 prompt → 贴到旧 AI → 把返回粘回来；或上传 ZIP |
 | Copilot | 隐私页"导出全部活动历史"（.csv）；记忆页可手动复制 | 设置→记忆→"添加或导入记忆"（同 Gemini 的粘贴 prompt 模式） |
 | Meta AI | Accounts Center→下载你的信息（HTML/JSON，可直传外部服务） | 无官方导入；粘贴交接包 |
-| 通用 AI 对话 | 让它"列出你记住的关于我的一切"（参考 Claude 官方 prompt） | 粘贴交接包 + 一句话指令 |
+| 通用 AI 对话 | 让它"列出你记住的关于我的一切"（参考 Claude 官方 prompt） | 粘贴交接包 + 简短指令 |
 | 编程 Agent | 见下表"文件约定" | 见下表"文件约定" |
 
 ## Claude 官方迁移 prompt（可直接用；2026-09 帮助中心版本更长，增加了按类别逐项列出的要求）
@@ -23,7 +23,7 @@
 > past conversations. Output everything in a single code block. Format each
 > entry as: [date saved, if available] – memory content."
 
-## 通用导入一句话指令
+## 通用导入指令
 
 0.4.3+ 的包自带接收指引，粘贴进新对话时附上这一句即可：
 

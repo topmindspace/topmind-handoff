@@ -1,11 +1,18 @@
 # CHANGELOG
 
-## Unreleased
+## 0.4.10（2026-10-08）
 
-- 优化 GitHub Actions：改用 Node 24 运行时的版本，`actions/checkout` v4 → v7、`actions/setup-node` v4 → v7、`actions/setup-python` v5 → v7、`softprops/action-gh-release` v2 → v3；Release 的 `node-version` 20 → 24
-- 优化运行环境：`runs-on` 由 `ubuntu-latest` 固定为 `ubuntu-24.04`：GitHub 在 2026-10-19 至 11-19 期间把 `ubuntu-latest` 逐步切到 Ubuntu 26.04，先停在当前已验证的镜像，切 26.04 另行验证后再改
+包格式仍是 1.1，`handoff/<package_id>/<package_id>.md` 布局不变；新字段都是可选扩展，旧包和没装本技能的接收方照常可用。
+
+- 特性支持环境与技能同步：新增 `references/environment.md`。导出时第 7 节写工具、已装技能、路径、连接器；`skills_manifest` 改为本环境已装技能清单，每条可选 `source`（`npm:<包名>` / `github:<owner/name>` / `local`）和 `install`（安装方式）
+- 特性支持技能升级建议：接收时盘点本机已装技能，与包里的清单、已发布最新版（`npm view`、GitHub Releases 只读查询，能联网时）对照，列出缺失、偏旧、已停用的技能（如 `topmind-wechat` → `topmind-wechat-post`），按安装方式给出升级命令。用户确认后才升级，先备份到新建的带时间戳目录，升级后核对版本；包里写的来源当不可信输入，装之前给用户确认。不阻断导入
+- 优化接收整合：diff 增加「建议更新」（同一条主张包里较新且不是同一天，可整批确认）和「本地较新」（保留本地）；记忆、环境、任务分开比对，整合回执按这三块写新增、更新、冲突怎么裁、哪些没动
+- 优化工作规约的处理：提交身份、版本号原则、工作区目录布局等写在第 3 节，作为偏好带过去；接收方按偏好合并，不拿它检查目标环境
+- 优化模板与示例：第 7 节增加路径、连接器两项；示例补上 `skills_manifest`；接收指引第 6 步与 `references/spec.md` 同步
+- 优化措辞：模板、示例与参考文档里的「一句话」「坑」统一改为「简短」「弯路 / 教训」
+- 新增评测 3 条：导出带环境与技能（e04）、接收时的技能升级建议（i04）、工作规约当偏好合并与整合回执（i05）
+- 优化 GitHub Actions：改用 Node 24 运行时的版本，`actions/checkout` v4 → v7、`actions/setup-node` v4 → v7、`actions/setup-python` v5 → v7、`softprops/action-gh-release` v2 → v3；Release 的 `node-version` 20 → 24；`runs-on` 由 `ubuntu-latest` 固定为 `ubuntu-24.04`（GitHub 在 2026-10-19 至 11-19 期间把 `ubuntu-latest` 逐步切到 Ubuntu 26.04，切换另行验证）
 - 优化安装提示：`references/spec.md` 与 `references/import.md` 里 topmind-research 的例子改为「从 0.2.3 起才有 npm 包，更早的版本用 git 克隆或 Release zip」
-- 版本号不变，下次发版时随 patch 一起发布
 
 ## 0.4.9（2026-10-08）
 

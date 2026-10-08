@@ -12,14 +12,14 @@ description: >-
   migrate memories、onboard new agent.
   Do NOT use for 日常单条记忆写入或更新本工作区画像（记住这个、更新我的情况 →
   topmind-memory 或各工具自带记忆）、整理笔记或周期整理（→ topmind-organize）、
-  出稿写作与导出文稿（→ topmind-write）、技能安装。
+  出稿写作与导出文稿（→ topmind-write）、与交接无关的单独技能安装。
 license: MIT
 compatibility: >-
   Any AI agent with file read/write. Local handoff needs no network and no account.
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored.
 metadata:
-  version: "0.4.9"
+  version: "0.4.10"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
   updated: "2026-10-08"
@@ -32,7 +32,9 @@ metadata:
 
 把一个人的工作上下文（身份、沟通偏好、工作习惯、项目目标、事实记忆、隐私边界）
 装进一份**便携交接包**，在任意 AI 工具之间带走或合并。
-技能本身不内置任何用户数据，不写死任何工具路径。
+接收时把三类信息整合进目标环境：环境（工具、已装技能与版本、路径、连接器）、
+记忆（画像、偏好、事实）、交接的任务（进行中的工作、待办、下一步）。
+技能本身不内置任何用户数据，不写死任何工具路径；包里的工作规约当偏好带过去，不拿来检查目标环境。
 
 ## 角色：技能准备并校验，模型判断合并
 
@@ -56,7 +58,7 @@ metadata:
 4. 项目与目标（Projects & goals）
 5. 事实与记忆（Facts & memories；日期可选；主张 id 可选）
 6. 边界与隐私（Boundaries & privacy）——行为约束，不写成事实记忆
-7. 环境与技能（Environment & skills）——只比对技能，不阻断；与 frontmatter `skills_manifest` 对应
+7. 环境与技能（Environment & skills）——环境同步信息，给技能升级建议，不阻断；与 frontmatter `skills_manifest` 对应
 8. 进行中的工作（Active work）——按任务合并，不覆盖、不删除本地任务
 9. 仓库与资料（Repos & assets）——没有就写「无」
 
@@ -72,7 +74,7 @@ metadata:
 细节见 `references/export.md`。只读来源，不改来源。
 
 1. **采集**：按 `references/tool-adapters.md` 读本工具的记忆与画像（topmind 工作区见其中「topmind 工作区」一节）。
-   一并收集实际用到的技能名 + 版本、第 8 节能核对到的任务字段。没有来源就标「未核实」或 `"unknown"`，不编造。
+   一并收集本环境的工具、已装技能（名、版本、来源）、路径、连接器（见 `references/environment.md`），以及第 8 节能核对到的任务字段。没有来源就标「未核实」或 `"unknown"`，不编造。
    定 `origin_id`（`工具-账号标识-范围`）和本次唯一的 `package_id`（见 `references/spec.md`）。
 2. **仓库与资料（第 9 节）**：用户正在改项目仓库时，**建议**其先自行 commit 并 push。技能不对项目仓库 commit、push 或 `reset --hard`。
 3. **分类**：持久偏好 / 当前状态 / 项目待办 / 历史经验 / 敏感丢弃。
@@ -98,13 +100,14 @@ metadata:
 模型应用的决策清单（细则见 `references/import.md`）：
 
 1. **校验**：`handoff_version` 为 `2.x` 及以上才停；1.1 的可选字段都继续；缺第 6 节要提醒。
-2. **Diff**：新增 / 冲突 / 已撤回。包里没写的不是删除；只有同一 `{id:xxxx}` 且写明「已撤回」才是墓碑，只建议删除。
+2. **Diff**：新增 / 建议更新（包里较新）/ 冲突 / 已撤回，记忆、环境、任务分开列。包里没写的不是删除；只有同一 `{id:xxxx}` 且写明「已撤回」才是墓碑，只建议删除。
 3. **冲突不覆盖**；同一天或缺日期就问。`generated_at` 只用来选出哪一份包是当前事实，不决定包里某一条谁赢。
 4. **画像锚点**（用户称呼、用户对本智能体的称呼、语言、时区）永不自动覆盖。
-5. **第 6 节**只作行为约束；**第 7 节**只提示安装；**第 8 节**按任务 id 合并，包里没有的本地任务留下。
+5. **第 6 节**只作行为约束；**第 7 节**按来源整合环境，对照本机列出缺失、偏旧、已停用的技能和升级命令，
+   用户确认后才升级、先备份（`references/environment.md`）；**第 8 节**按任务 id 合并，包里没有的本地任务留下。
 6. **第 9 节**：本地已有仓库先 `git status` / `git diff`；禁止 `reset --hard` 与 force-push；用户没要求不 commit。
 7. **mode**：`migration`（缺省）与 `sync` 都以全库最新一份为当前事实，都要确认冲突，都不是整包覆盖。
-8. **没确认的不写**。确认后写入本工具的记忆位置（见 `references/tool-adapters.md`），回执写明合并了什么、冲突怎么裁、哪些没动。接收不删云端包。
+8. **没确认的不写**。确认后写入本工具的记忆位置（见 `references/tool-adapters.md`），整合回执按记忆、环境、任务三块写明合并了什么、更新了什么、冲突怎么裁、哪些没动。接收不删云端包。
 
 「帮我接收最新 handoff」且没贴文件：只有以前配置过私有 `cloud_repo` 才去取，取法见 `references/import.md` 3.6。
 
@@ -117,7 +120,7 @@ metadata:
 ## Output Contract
 
 - 导出：符合 `references/spec.md` 的一份 Markdown，外加定稿前的确认说明。推了云端就写明仓库、路径和删了哪些旧文件夹；只本地就写明没推、没删。
-- 导入：三类 diff（新增 / 冲突 / 已撤回）+ 用户确认后的合并回执。从云端取包时写明来源。
+- 导入：diff（新增 / 建议更新 / 冲突 / 已撤回）+ 技能升级建议 + 用户确认后的整合回执（记忆、环境、任务）。从云端取包时写明来源。
 - 不编造版本号、状态、日期、commit。无法核实就标「未核实」。
 
 ## Operating Rules
@@ -127,6 +130,6 @@ metadata:
 3. **隐私硬线**：密码、API key、token、证件号、银行卡号、精确住址、他人隐私、记账明细永远不进包。见 `references/privacy.md`。
 4. **冲突不替用户拍板**。锚点永不自动覆盖。包上的技能版本必须是当次读到的。
 5. **格式版本**：`handoff_version` 仍为 1.1。不支持的大版本先停；不认识的可选字段忽略。
-6. **不过度工程**：不搭服务、不装 SDK、不做签名、不写解析器或自动合并代码，不自动安装技能。定稿一次确认、合并一次确认。
+6. **不过度工程**：不搭服务、不装 SDK、不做签名、不写解析器或自动合并代码，不自动安装或升级技能（用户确认后才升级，先备份）。定稿一次确认、合并一次确认。
 7. **多环境**：一个人可以有多个 `origin_id`。全库 `generated_at` 最新一份是当前事实；某条它没写清，才看其他来源各自最新一份。导出写全本环境看得到的，不把没看到的写成「没有」。
 8. **云端只走私有 Git**，不存 token，由当次对话用 git 执行，不是 CI、cron 或常驻程序。不碰公开仓库、`cloud_path` 以外的路径或项目仓库。

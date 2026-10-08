@@ -1,3 +1,8 @@
 .DS_Store
 *.pyc
 __pycache__/
+node_modules/
+release-assets/
+dist/
+*.tgz
+package-lock.json

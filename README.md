@@ -60,7 +60,9 @@ cp -r node_modules/@topmindspace/topmind-handoff/. ~/.claude/skills/topmind-hand
 
 0.4.4+ 的包自带接收指引，没装技能也能交接。
 装了技能时接收更完整（主张 id、墓碑、仓库 diff、可选私有 Git 云端）。
-冲突等你拍板后再合并。
+接收时把环境（工具、已装技能与版本、路径、连接器）、记忆、交接的任务分别比对整合，冲突等你拍板后再合并，
+最后给一份按这三块写的整合回执。目标环境缺失、偏旧或已停用的技能会列出来并给出升级命令，你确认后才升级，升级前先备份。
+包里的工作规约当偏好带过去，不要求目标环境照做。
 
 ## 仓库结构
 
@@ -71,6 +73,7 @@ topmind-handoff/
 │   ├── spec.md                 # 交接包格式规范 v1.1（八节 + 可选第 9 节）
 │   ├── export.md               # 导出工作流：采集→分类→裁决→脱敏→落盘
 │   ├── import.md               # 导入工作流：校验→解析→比对→确认→合并（含反投毒）
+│   ├── environment.md          # 第 7 节：环境与技能盘点、比对、升级建议
 │   ├── privacy.md              # 隐私硬线：永不携带清单、脱敏手法、分享警告
 │   └── tool-adapters.md        # 各工具适配：ChatGPT/Claude/Gemini/Copilot/编程 Agent/topmind 工作区
 ├── assets/
@@ -86,7 +89,7 @@ topmind-handoff/
 ---
 handoff_version: "1.1"
 generated_at: 2026-10-01T15:30:00+08:00
-generator: "Claude Code + topmind-handoff 0.4.9"
+generator: "Claude Code + topmind-handoff 0.4.10"
 language: zh-CN
 scope: private
 ---
@@ -115,5 +118,5 @@ scope: private
 
 ## 版本
 
-当前技能版本 `0.4.9`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.4.10`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
 已配置私有云端时，每次推送默认清理该来源的旧包（规则见 `references/export.md`「云端推送与清理」，删除清单会在定稿前列给你确认）。说「只本地」则不推、不删。
