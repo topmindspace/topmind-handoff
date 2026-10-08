@@ -17,7 +17,7 @@
 接收一开始只通知，然后继续。不要干等，不要自动安装。
 
 1. **本技能**：本机没有 topmind-handoff，或已装版本低于包内 `generator` 里的 `topmind-handoff` 版本：告诉用户，建议克隆 https://github.com/topmindspace/topmind-handoff 到本工具的技能目录（或 `npm i @topmindspace/topmind-handoff` 后把包目录复制进去；只装进 `node_modules` 宿主找不到）。然后用包内接收指引继续。`generator` 里没有版本号就不要声称更旧。已装且不旧：包内指引照做，并加上本文件的完整清单（主张 id、墓碑、画像锚点、第 9 节 diff、云端）。没装或更旧时，包内指引是下限，足够做正确但较薄的合并。不要删指引，也不要要求先装才能合并。本地技能更旧时，措辞以包内指引为准，并说明技能偏旧。
-2. **`skills_manifest` 和第 7 节**：列出缺失的、以及 `major.minor` 更旧的，每条给安装或升级提示（用该技能仓库或 README 写的装法；不要默认都在 npm 上，例如 topmind-research 没有 npm 包，用 git 克隆），建议更新，然后继续。`"unknown"` 或本地更高：不阻断。绝不自动安装。
+2. **`skills_manifest` 和第 7 节**：列出缺失的、以及 `major.minor` 更旧的，每条给安装或升级提示（用该技能仓库或 README 写的装法；不要默认都在 npm 上，例如 topmind-research 从 0.2.3 起才有 npm 包，更早的版本用 git 克隆或 Release zip），建议更新，然后继续。`"unknown"` 或本地更高：不阻断。绝不自动安装。
 
 自解释的包是下限，技能是上限。
 

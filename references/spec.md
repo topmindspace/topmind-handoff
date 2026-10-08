@@ -186,7 +186,7 @@ cloud_path: "handoff/"         # 可选 1.1：仓库内相对目录，缺省 han
 - `skills_manifest`（可选）：`name` + `version`。接收方只做比对和提示：
   列出缺失的和 `major.minor` 更旧的，给出安装或升级命令，建议更新，然后继续。
   更高通常可用。`"unknown"` 不阻断。绝不自动安装。不把技能清单写入事实记忆。
-  安装提示给该技能仓库或 README 写的装法，不要默认都在 npm 上（例如 topmind-research 没有发布 npm 包，要用 git 克隆）。
+  安装提示给该技能仓库或 README 写的装法，不要默认都在 npm 上（例如 topmind-research 从 0.2.3 起才有 npm 包，更早的版本要用 git 克隆或 Release zip；npm 装完还要复制进技能目录）。
   对本技能同样：缺失或比 `generator` 里的 `topmind-handoff` 版本更旧，只建议
   克隆仓库到技能目录（或 npm 安装后复制进去），然后用包内指引继续。
 - `assets_bundle`（可选 1.1 扩展）：该包文件夹内、相对这份 markdown 的路径。没有小资料就省略。新包不再使用同级 `-assets/`。
