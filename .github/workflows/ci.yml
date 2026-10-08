@@ -7,9 +7,9 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Privacy scan (no secrets / PII in skill files)
         run: |
@@ -27,7 +27,7 @@ jobs:
           fi
           echo "privacy scan OK"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
