@@ -1,7 +1,7 @@
 ---
 handoff_version: "1.1"
 generated_at: YYYY-MM-DDTHH:MM:SS+08:00
-generator: "工具名 + topmind-handoff 0.4.8"
+generator: "工具名 + topmind-handoff 0.4.9"
 subject: "称呼（可选，可省略）"
 language: zh-CN
 scope: private
@@ -17,7 +17,7 @@ cloud_path: "handoff/"                     # 可选。缺省 handoff/。不用�
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff
-> （`npm i @topmindspace/topmind-handoff` 或克隆 https://github.com/topmindspace/topmind-handoff）
+> （克隆 https://github.com/topmindspace/topmind-handoff 到本工具的技能目录，或 `npm i @topmindspace/topmind-handoff` 后复制进去）
 > 以及 `skills_manifest` 里的技能。只提示，不自动安装。缺失或比 `generator` 更旧也继续，
 > 不要等、不要阻断。装了技能用完整清单（id、墓碑、画像、第 9 节 diff、云端）；
 > 没装时本指引已够做正确但较薄的合并。

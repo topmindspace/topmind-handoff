@@ -27,15 +27,21 @@ jobs:
           fi
           echo "privacy scan OK"
 
-      - name: Frontmatter checks
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Agent Skills 官方校验器：frontmatter 只允许规范字段，自定义字段在 metadata 下
+      - name: Agent Skills validate
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet skills-ref
+          agentskills validate "$PWD"
+
+      # 版本一致、接收指引模板与 assets 同步、引用存在、云端清理规则只写一份
+      - name: Repo checks
         run: |
           set -euo pipefail
           grep -q '^name: topmind-handoff' SKILL.md
-          SKILL_VER="$(grep -m1 '^version:' SKILL.md | awk '{print $2}')"
-          PKG_VER="$(node -p "require('./package.json').version")"
-          if [[ "$SKILL_VER" != "$PKG_VER" ]]; then
-            echo "version mismatch: SKILL.md=${SKILL_VER} package.json=${PKG_VER}" >&2
-            exit 1
-          fi
           grep -q 'handoff_version:' assets/handoff-template.md
-          echo "frontmatter OK (skill=${SKILL_VER})"
+          python3 scripts/check_repo.py

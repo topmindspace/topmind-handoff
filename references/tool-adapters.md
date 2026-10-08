@@ -9,14 +9,14 @@
 | 工具 | 从它导出 | 向它导入 |
 |---|---|---|
 | ChatGPT | 设置→数据控制→导出数据（ZIP：聊天记录有；Saved Memories/自定义指令**不在导出内**，需手动复制） | 无官方导入；新开对话粘贴交接包 + 一句话指令（见下） |
-| Claude | 设置→隐私→导出数据（ZIP，24h 有效期；新版含 memories.json；Projects 自定义指令不在内）| 官方迁移 prompt：让旧工具按 `[日期] – 记忆内容` 格式输出，粘贴回 Claude |
+| Claude | 设置→隐私→导出数据（ZIP，24h 有效期；新版含 memories.json；Projects 自定义指令不在内）；只看记忆可在对话里让它逐字写出记忆 | Settings → Memory → Start import（新版记忆；旧版在 Settings → Capabilities 的 Memory 区）：把官方 prompt 贴给旧工具，结果粘回后点 Add to memory。官方标注为实验功能，旧版说明生效可能要 24 小时（据 2026-09-02 帮助中心） |
 | Gemini | Google Takeout 勾选 Gemini Apps（JSON/HTML，聊天记录）| "Import memory to Gemini"：复制官方 prompt → 贴到旧 AI → 把返回粘回来；或上传 ZIP |
 | Copilot | 隐私页"导出全部活动历史"（.csv）；记忆页可手动复制 | 设置→记忆→"添加或导入记忆"（同 Gemini 的粘贴 prompt 模式） |
 | Meta AI | Accounts Center→下载你的信息（HTML/JSON，可直传外部服务） | 无官方导入；粘贴交接包 |
 | 通用 AI 对话 | 让它"列出你记住的关于我的一切"（参考 Claude 官方 prompt） | 粘贴交接包 + 一句话指令 |
 | 编程 Agent | 见下表"文件约定" | 见下表"文件约定" |
 
-## Claude 官方迁移 prompt（可直接用）
+## Claude 官方迁移 prompt（可直接用；2026-09 帮助中心版本更长，增加了按类别逐项列出的要求）
 
 > "I'm moving to another service and need to export my data. List every memory
 > you have stored about me, as well as any context you've learned about me from
@@ -54,6 +54,31 @@
 
 社区常见做法：多个工具的指令文件用 symlink 指向同一份 `AGENTS.md`，
 `MEMORY.md`/`USER.md` 同理——一份真源，多处引用。
+
+## topmind 工作区
+
+用户的工作区里有 `topmind.yaml` 时按本节落点；记忆目录以 `topmind.yaml` 的 `memory.dir` 为准，缺省 `memory/`。
+写入仍走「确认后才写」，与 topmind-memory「仅用户明确沉淀」一致；能用 topmind-memory 的就交给它写，本技能只给落点建议。
+
+| 交接包章节 | 导出时读 | 导入时落点（确认后） | 说明 |
+|---|---|---|---|
+| 1 这个人是谁、2 怎么跟他说话 | `memory/profile.md` 活跃段（`## 偏好` 等） | `memory/profile.md`，走追加 / 原位更新，不整文替换 | 称呼、语言、时区、对智能体的称呼是锚点，不自动覆盖 |
+| 3 工作习惯与默认设置 | `memory/profile.md` 的 `## 偏好`、工作区 `AGENTS.md` | `memory/profile.md` `## 偏好`；工作区规约类写 `AGENTS.md` | 硬线保持原文 |
+| 4 项目与目标 | `memory/profile.md` `## 当前目标` / `## 进行中的事`，以及内容大类下的专题 | `memory/profile.md` 对应段；不新建专题夹（开专题交给 topmind-organize） | 专题是内容目录，不是记忆平面 |
+| 5 事实与记忆 | `memory/profile.md` 活跃段 + `memory/periodic/{YYYY}/` 周期反思 | 稳定事实进 `memory/profile.md`；周期性的观察进 `memory/periodic/{YYYY}/`；用户明说「写进专题记忆」才写 `memory/topics/{slug}.md` | 不默认写 `memory/topics/` |
+| 6 边界与隐私 | `AGENTS.md` 边界节、`memory/profile.md` 里的硬线 | `AGENTS.md` 边界节 | 行为约束，不进事实记忆 |
+| 7 环境与技能 | 工作区技能目录各 `SKILL.md` 的 `name` 与 `metadata.version`（旧版在顶层 `version`） | 不写入记忆 | 只比对、提示安装 |
+| 8 进行中的工作 | `memory/todo.md`（待办卫星）+ `## 进行中的事` | 任务进 `memory/todo.md`（按任务 id 合并，不删本地待办）；只有状态摘要进 `## 进行中的事` | topmind-memory 不主写待办，待办以 `memory/todo.md` 为准 |
+| 9 仓库与资料 | 用户说明、工作区里的仓库 | 不写入记忆 | 按 `import.md` 3.4 |
+| 不导出 | `memory/ledgers/`（记账） | 不导入 | 见 `privacy.md`「永不携带」 |
+
+`memory/profile.md` 的已归档内容在 `## 历史记录`：导出只取活跃段；历史段里的条目要撤回时写墓碑，不要当作当前事实带走。
+
+### 按月日志型记忆（如 Grok Bot 一类 agent）
+
+记忆是 `memory/profile.md` + `memory/log/YYYY-MM.md`（按月日志）时：第 1–3 节对应 `memory/profile.md`，
+第 5 节的持久事实进 `memory/profile.md`、带日期的经过写进当月 `memory/log/YYYY-MM.md`，第 8 节进该环境自己的待办；
+没有待办文件时先问用户放哪。目录名以该 agent 实际使用的为准，不写死路径。
 
 ## Bot 类 / 新兴 Agent 工具通用接入法
 
@@ -93,6 +118,7 @@
 - **通用对话工具**：用上面的迁移 prompt 先让它自己吐出来，再人工整理进包。
 - **编程 Agent**：读 `USER.md`、`MEMORY.md`、`AGENTS.md`、`SOUL.md`、
   `memory/` 日志、`GOAL.md`、各 `SKILL.md` frontmatter。
+- **topmind 工作区**：读 `memory/profile.md`（活跃段）、`memory/periodic/{YYYY}/`、`memory/todo.md`、`AGENTS.md`；不读 `memory/ledgers/`。见上「topmind 工作区」。
 - **有官方导出的**：先拿官方导出（ZIP/CSV）做底，再补手动复制的记忆/指令。
 
 ## 注意事项

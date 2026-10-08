@@ -24,12 +24,24 @@ Open Memory Protocol（提案）、W3C AI Agent Memory Interoperability CG（极
 
 ### 安装
 
+宿主（Claude Code、Codex、各类 Agent）只认技能目录里的 `topmind-handoff/SKILL.md`。
+只执行 `npm i` 会把包装进 `node_modules`，宿主找不到，要再复制一次。
+
 ```bash
-# npm 安装（v0.4.8+）
+# 方式一：克隆到技能目录（推荐，跟 main）
+git clone --depth 1 https://github.com/topmindspace/topmind-handoff.git ~/.claude/skills/topmind-handoff
+#   Codex：~/.codex/skills/topmind-handoff；其他宿主换成它的技能目录
+
+# 方式二：钉版本，下载 GitHub Release 的 topmind-handoff.zip，解压后整个目录放进技能目录
+#   （zip 内是 SKILL.md、references/、assets/ 等，目录名保持 topmind-handoff）
+
+# 方式三：npm 安装后复制进技能目录
 npm i @topmindspace/topmind-handoff
-# 或直接 clone
-git clone https://github.com/topmindspace/topmind-handoff.git
+mkdir -p ~/.claude/skills/topmind-handoff
+cp -r node_modules/@topmindspace/topmind-handoff/. ~/.claude/skills/topmind-handoff/
 ```
+
+升级：重新 `git pull`，或用新版覆盖技能目录。技能目录里只需要 `SKILL.md`、`references/`、`assets/`。
 
 ### 导出（带走你的上下文）
 
@@ -60,7 +72,7 @@ topmind-handoff/
 │   ├── export.md               # 导出工作流：采集→分类→裁决→脱敏→落盘
 │   ├── import.md               # 导入工作流：校验→解析→比对→确认→合并（含反投毒）
 │   ├── privacy.md              # 隐私硬线：永不携带清单、脱敏手法、分享警告
-│   └── tool-adapters.md        # 各工具适配：ChatGPT/Claude/Gemini/Copilot/编程 Agent
+│   └── tool-adapters.md        # 各工具适配：ChatGPT/Claude/Gemini/Copilot/编程 Agent/topmind 工作区
 ├── assets/
 │   ├── handoff-template.md     # 空白交接包模板
 │   └── handoff-example.md      # 填写示例（虚构占位数据）
@@ -74,7 +86,7 @@ topmind-handoff/
 ---
 handoff_version: "1.1"
 generated_at: 2026-10-01T15:30:00+08:00
-generator: "Claude Code + topmind-handoff 0.4.8"
+generator: "Claude Code + topmind-handoff 0.4.9"
 language: zh-CN
 scope: private
 ---
@@ -103,5 +115,5 @@ scope: private
 
 ## 版本
 
-当前技能版本 `0.4.8`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
-已配置私有云端时，每次推送默认每个来源只留最新一份，不用每次再说。说「只本地」则不推、不删。
+当前技能版本 `0.4.9`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
+已配置私有云端时，每次推送默认清理该来源的旧包（规则见 `references/export.md`「云端推送与清理」，删除清单会在定稿前列给你确认）。说「只本地」则不推、不删。

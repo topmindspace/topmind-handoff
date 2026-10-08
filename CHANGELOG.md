@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 0.4.9（2026-10-08）
+
+包格式仍是 1.1，`cloud_path/<package_id>/<package_id>.md` 布局不变，与已在用的私有交接仓库兼容。
+
+- 特性支持 topmind 工作区：`references/tool-adapters.md` 新增落点表，第 1–3 节对应 `memory/profile.md`，第 5 节对应 `memory/profile.md` 与 `memory/periodic/{YYYY}/`（用户明说才写 `memory/topics/`），第 8 节对应待办卫星 `memory/todo.md`；另写按月日志型记忆（`memory/profile.md` + `memory/log/YYYY-MM.md`）的落点。导入仍须确认
+- 优化隐私边界：`memory/ledgers/` 与任何记账、收支、余额明细列入「永不携带」
+- 优化导出确认：会推送云端时，定稿前列出将写入的路径和将删除的旧文件夹清单，用户有异议就少删或不删
+- 优化文档结构：云端推送与清理规则只在 `references/export.md`「云端推送与清理」写一份，`SKILL.md`、`spec.md`、`import.md`、`privacy.md`、README 改为指针；随包分发的接收指引模板保留摘要。`SKILL.md` 从 205 行压到约 130 行（正文约 100 行）
+- 优化 frontmatter：对齐 Agent Skills 规范，`version`、`triggers`、`tags` 等移入 `metadata`，`agentskills validate` 通过；去掉与 topmind-organize、topmind-memory 相撞的「定期整理」「用户画像」触发词，Do NOT 点名 topmind-memory、topmind-organize、topmind-write
+- 优化安装说明：README 改为克隆到技能目录、Release zip、npm 安装后复制进技能目录三种，写明只装进 `node_modules` 宿主找不到；接收指引模板与 `import.md` 的安装建议同步改写；`skills_manifest` 的安装提示不再默认 `npm i`（topmind-research 没有 npm 包）
+- 优化文件名说明：本地 `<称呼>-handoff-YYYYMMDD.md` 与云端 `<package_id>.md` 是同一份内容，接收方按 frontmatter 认包
+- 优化 Claude 导入入口说明：新版记忆在 Settings → Memory → Start import，旧版在 Settings → Capabilities（据 2026-09-02 帮助中心）
+- CI 增加 `agentskills validate` 与 `scripts/check_repo.py`（版本一致、接收指引模板与 assets 同步、引用存在、云端清理规则只写一份）；Release 增加同样的检查，并增加「只留最近 2 个 Release」步骤（tag 保留），与其他 topmind 仓库一致
+- 新增 `evals/evals.json`：导出 3 条、导入 3 条、分流负例 2 条（不进 npm 包）
+
+
 ## 0.4.8（2026-10-03）
 
 包格式仍是 1.1。

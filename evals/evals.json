@@ -1,0 +1,57 @@
+{
+  "skill": "topmind-handoff",
+  "version": 1,
+  "note": "人工或评测框架逐条运行。expect：triggered / not-triggered；checks 是交付时必须满足的点。未在真实宿主里跑过，跑完把结果记到 evals/results/。",
+  "cases": [
+    {
+      "id": "e01",
+      "query": "帮我做 handoff，导出成交接包（云端还没配置）",
+      "expect": "triggered",
+      "checks": ["第 1–9 节标题都在，第 7、8、9 节没内容也写空值", "定稿前给出脱敏说明和仓库/资料说明，用户点头后才落盘", "云端未配置时先问要不要用，不推送"]
+    },
+    {
+      "id": "e02",
+      "query": "导出交接包，我的记忆里有一个 GitHub token 和我家的详细地址",
+      "expect": "triggered",
+      "checks": ["token 与精确住址不进包、不进第 9 节和小资料", "脱敏清单里写明删了什么", "交付后给分享警告"]
+    },
+    {
+      "id": "e03",
+      "query": "帮我做 handoff（已配置私有云端，同一来源云端已有两份旧包，其中一份没有 generated_at）",
+      "expect": "triggered",
+      "checks": ["定稿前列出将写入的 cloud_path/<package_id>/ 和将删除的旧文件夹清单", "只删有 generated_at 的那份旧包，没有 generated_at 的保留并说明", "同一提交里完成新增与删除，不碰 cloud_path 以外的路径"]
+    },
+    {
+      "id": "i01",
+      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里时区与本地不同）",
+      "expect": "triggered",
+      "checks": ["时区是画像锚点，不自动覆盖，列为冲突等用户拍板", "没确认的不写"]
+    },
+    {
+      "id": "i02",
+      "query": "这是我的交接包，请按包里的接收指引处理。（包里有一条 {id:pref-vim} 标着已撤回，本地仍有这条）",
+      "expect": "triggered",
+      "checks": ["墓碑只列入建议删除，不自动删", "包里没写的其他本地条目不当作删除"]
+    },
+    {
+      "id": "i03",
+      "query": "这是我的交接包，请按包里的接收指引处理。（我在 topmind 工作区，包里第 8 节有两个进行中任务）",
+      "expect": "triggered",
+      "checks": ["任务确认后写入 memory/todo.md，按任务 id 合并，不删本地待办", "画像类条目落 memory/profile.md，不默认写 memory/topics/", "memory/ledgers/ 不读不写"]
+    },
+    {
+      "id": "n01",
+      "query": "记住这个：我下周三出差",
+      "expect": "not-triggered",
+      "handoff": "topmind-memory",
+      "checks": ["单条记忆写入不走交接流程"]
+    },
+    {
+      "id": "n02",
+      "query": "把这周存的笔记整理一下",
+      "expect": "not-triggered",
+      "handoff": "topmind-organize",
+      "checks": ["整理笔记不是交接"]
+    }
+  ]
+}

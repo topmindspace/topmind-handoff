@@ -16,8 +16,8 @@
 
 接收一开始只通知，然后继续。不要干等，不要自动安装。
 
-1. **本技能**：本机没有 topmind-handoff，或已装版本低于包内 `generator` 里的 `topmind-handoff` 版本：告诉用户，建议 `npm i @topmindspace/topmind-handoff` 或克隆 https://github.com/topmindspace/topmind-handoff 。然后用包内接收指引继续。`generator` 里没有版本号就不要声称更旧。已装且不旧：包内指引照做，并加上本文件的完整清单（主张 id、墓碑、画像锚点、第 9 节 diff、云端）。没装或更旧时，包内指引是下限，足够做正确但较薄的合并。不要删指引，也不要要求先装才能合并。本地技能更旧时，措辞以包内指引为准，并说明技能偏旧。
-2. **`skills_manifest` 和第 7 节**：列出缺失的、以及 `major.minor` 更旧的，每条给安装或升级提示（如 `npm i @topmindspace/<name>`），建议更新，然后继续。`"unknown"` 或本地更高：不阻断。绝不自动安装。
+1. **本技能**：本机没有 topmind-handoff，或已装版本低于包内 `generator` 里的 `topmind-handoff` 版本：告诉用户，建议克隆 https://github.com/topmindspace/topmind-handoff 到本工具的技能目录（或 `npm i @topmindspace/topmind-handoff` 后把包目录复制进去；只装进 `node_modules` 宿主找不到）。然后用包内接收指引继续。`generator` 里没有版本号就不要声称更旧。已装且不旧：包内指引照做，并加上本文件的完整清单（主张 id、墓碑、画像锚点、第 9 节 diff、云端）。没装或更旧时，包内指引是下限，足够做正确但较薄的合并。不要删指引，也不要要求先装才能合并。本地技能更旧时，措辞以包内指引为准，并说明技能偏旧。
+2. **`skills_manifest` 和第 7 节**：列出缺失的、以及 `major.minor` 更旧的，每条给安装或升级提示（用该技能仓库或 README 写的装法；不要默认都在 npm 上，例如 topmind-research 没有 npm 包，用 git 克隆），建议更新，然后继续。`"unknown"` 或本地更高：不阻断。绝不自动安装。
 
 自解释的包是下限，技能是上限。
 
@@ -88,15 +88,15 @@
 
 | 情况 | 动作 |
 |---|---|
-| 本地缺失 | 列出来，给安装命令（如 `npm i @topmindspace/<name>`）。建议安装，继续导入 |
+| 本地缺失 | 列出来，给该技能 README 写的安装方式（不要假定都在 npm 上）。建议安装，继续导入 |
 | 本地 `major.minor` 更低 | 列出来，给升级命令。建议更新，继续导入 |
 | 本地版本更高 | 通常可用；包没有写明 breaking 就不警告 |
 | 版本为 `"unknown"` | 跳过比对，不阻断 |
 | 本技能缺失或比 `generator` 更旧 | 告诉用户并建议更新，改按包内指引继续。不阻断 |
 
-用户可以先合并记忆，后装技能。本技能的安装命令是
-`npm i @topmindspace/topmind-handoff` 或克隆
-https://github.com/topmindspace/topmind-handoff 。不要建议 `npx skills`。
+用户可以先合并记忆，后装技能。本技能的装法是克隆
+https://github.com/topmindspace/topmind-handoff 到本工具的技能目录，或 `npm i @topmindspace/topmind-handoff`
+后把包目录复制进技能目录。不要建议 `npx skills`。
 不装本技能也不停。有技能时才把本节的云端、墓碑和锚点边界算进完整清单。
 
 ### 3.3 进行中的工作（第 8 节）
@@ -126,7 +126,7 @@ https://github.com/topmindspace/topmind-handoff 。不要建议 `npx skills`。
 - 大文件只用云端位置和建议相对落点。不把数据集嵌进对话或记忆。
 - 小资料在该包文件夹里，路径相对这份 markdown。读到旧的同级 `-assets/` 仍可用，新包不再这样放。
   建议落点是相对路径。用户名保持 `~`，不展开成别人的家目录。
-- 第 9 节的项目仓库不是交接云端。不要对项目仓库删除文件或整理目录。接收不删交接云端里的包。同一来源只留最新一份，发生在导出推送的同一提交里。
+- 第 9 节的项目仓库不是交接云端。不要对项目仓库删除文件或整理目录。接收不删交接云端里的包（清理只在导出推送时做，见 `export.md`「云端推送与清理」）。
 
 ### 3.5 sync 与 migration
 
@@ -156,7 +156,7 @@ https://github.com/topmindspace/topmind-handoff 。不要建议 `npx skills`。
 - 定时同步就是再导出一份新文件夹，再按上面接收。导出时应把最新一份里没矛盾、本环境没看到的写进新包，所以平时不必把每个来源都展开。
 - 取到之后仍走本清单和包内指引。
 
-接收不删云端包。不走出已配置的 `cloud_path`，不碰项目仓库、家目录或其他路径。导出推送才会在同一提交里删该来源更旧且有 `generated_at` 的文件夹。
+接收不删云端包。不走出已配置的 `cloud_path`，不碰项目仓库、家目录或其他路径。
 
 ## 4. 确认（Confirm）
 
@@ -180,7 +180,7 @@ https://github.com/topmindspace/topmind-handoff 。不要建议 `npx skills`。
 - 冲突写明用户选了哪一边，不要写「因为包更新所以覆盖」。
 - 第 6 节只作行为约束，不写入事实记忆。
 - 第 8 节按 3.3 合并。确认过的任务可以写入接收环境的待办或记忆；没确认的不写。不用本节覆盖或删除本地任务。
-- 第 9 节的仓库操作遵守 3.4。用户没在这次对话里要求 commit，就不 commit。这不禁止在已配置的私有交接仓库里做导出推送：同一提交新增 `cloud_path/<package_id>/`，并只删该来源更旧且有 `generated_at` 的文件夹。接收合并本身不删云端包。
+- 第 9 节的仓库操作遵守 3.4。用户没在这次对话里要求 commit，就不 commit。这不禁止导出时向已配置的私有交接仓库推送（见 `export.md`「云端推送与清理」）。接收合并本身不删云端包。
 
 ## 6. 回执（Report）
 

@@ -36,6 +36,17 @@ jobs:
           fi
           echo "tag matches package.json version: ${TAG}"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Repo checks
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet skills-ref
+          agentskills validate "$PWD"
+          python3 scripts/check_repo.py
+
       - name: Build release zip
         run: |
           set -euo pipefail
@@ -99,3 +110,29 @@ jobs:
           exit "$rc"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Keep only the 2 most recent GitHub Releases (API delete only), same as
+      # topmind-presentation / topmind-skills / topmind-writing-skills.
+      # Do NOT run `git push origin :refs/tags/...` — tags stay for history / npm pin.
+      # CHANGELOG.md is the full history once old Release pages are gone.
+      - name: Prune old releases (keep 2; tags retained)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          KEEP=2
+          mapfile -t ids < <(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --jq '.[] | "\(.published_at // .created_at)\t\(.id)\t\(.tag_name)"' | sort -r)
+          echo "found ${#ids[@]} release(s); keeping newest ${KEEP}; tags retained"
+          i=0
+          for row in "${ids[@]}"; do
+            i=$((i + 1))
+            if [ "$i" -le "$KEEP" ]; then
+              echo "keep  $row"
+              continue
+            fi
+            rest="${row#*$'\t'}"
+            id="${rest%%$'\t'*}"
+            tag="${rest#*$'\t'}"
+            echo "prune release id=${id} tag=${tag} (tag retained)"
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${id}"
+          done
