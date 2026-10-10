@@ -11,7 +11,7 @@ skills_manifest:                           # 本环境已装的技能清单
     version: "0.1.0"
     source: "npm:@scope/包名"               # 可选：npm:<包名> | github:<owner/name> | local。不用就删掉本行
     install: npm-copy                       # 可选：安装方式，见 references/environment.md。不用就删掉本行
-origin_id: "工具-账号标识-范围"          # 可选。不用就删掉本行。例：Muse-ding-sync
+origin_id: "工具-账号标识-范围"          # 可选。不用就删掉本行。例：Muse-demo-sync
 package_id: "工具-账号标识-范围-YYYYMMDD-xx"  # 可选。每次唯一。不用就删掉本行
 device_note: "设备名"                      # 可选。仅 sync，不进 origin_id。不用就删掉本行
 cloud_repo: "owner/name"                   # 可选。仅私有。不用云端就删掉本行

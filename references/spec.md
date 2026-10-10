@@ -172,8 +172,8 @@ skills_manifest:               # 可选 1.1：本环境已装的技能清单
     version: "0.3.1"
 mode: migration                # 可选 1.1：migration（默认）| sync
 assets_bundle: "./notes"  # 可选 1.1：包文件夹内、相对这份 markdown 的路径；没有就省略
-origin_id: "Muse-ding-sync"   # 可选 1.1：来源环境，跨时间稳定。不用就省略整行
-package_id: "Muse-ding-sync-20261001-k7"  # 可选 1.1：本次导出唯一。不用就省略
+origin_id: "Muse-demo-sync"   # 可选 1.1：来源环境，跨时间稳定。不用就省略整行
+package_id: "Muse-demo-sync-20261001-k7"  # 可选 1.1：本次导出唯一。不用就省略
 device_note: "MacBook Air"    # 可选 1.1：仅 sync 时的设备参考，不进 origin_id
 cloud_repo: "example/private-handoff"  # 可选 1.1：私有 GitHub owner/name。不用就省略
 cloud_path: "handoff/"         # 可选 1.1：仓库内相对目录，缺省 handoff/
@@ -204,7 +204,7 @@ cloud_path: "handoff/"         # 可选 1.1：仓库内相对目录，缺省 han
   接收方用这个版本和本机技能比较；字符串里没有版本号就不要声称「更旧」。
 - `origin_id`、`package_id`、`device_note`、`cloud_repo`、`cloud_path`：都可选。
   不用就省略整行，不要留空字符串冒充已经配置。看见不认识的就忽略。规则见下两节。
-  示例里的 `example/private-handoff` 与 `ding` 都是虚构，不是要去拉取的仓库。
+  示例里的 `example/private-handoff` 与 `demo` 都是虚构，不是要去拉取的仓库。
 
 ## origin_id 与 package_id（可选，1.1 扩展）
 
@@ -224,8 +224,8 @@ cloud_path: "handoff/"         # 可选 1.1：仓库内相对目录，缺省 han
 
 虚构例子（不是真实账号）：
 
-- 自动同步：`Muse-ding-sync`。可以另写 `device_note: "MacBook Air"`，这台机器的名字不在 id 里。
-- 本地且不同步：`GrokBot-ding-MacBook-Air`。
+- 自动同步：`Muse-demo-sync`。可以另写 `device_note: "MacBook Air"`，这台机器的名字不在 id 里。
+- 本地且不同步：`GrokBot-demo-MacBook-Air`。
 
 分不清自动同步还是本地不同步：问用户一次。答案和定下来的 `origin_id` 记在**这个用户在本工具里已有的记忆**中，下次沿用。不要写死某个文件路径。换了一台不同步的电脑，才是另一个 `origin_id`；同步型工具换设备不换 id。
 
@@ -340,7 +340,7 @@ cloud_path: "handoff/"         # 可选 1.1：仓库内相对目录，缺省 han
 - 经验教训：这条任务上已经验证过的，一条一句。换工具也成立的，同时写进第 5 节
 - 参考：链接或相对路径。不是密钥。接收方不自动打开
 
-状态行标明来源，例如「GrokBot-mspd-sync：草稿未改」。
+状态行标明来源，例如「GrokBot-example-sync：草稿未改」。
 另一台环境的进度写在同一 id 下另起一行，不要互相改写。
 
 - **状态（Status）**：上面的任务条目放这里。

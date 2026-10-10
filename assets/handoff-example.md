@@ -15,8 +15,8 @@ skills_manifest:
     version: "1.2.0"
     source: local
 assets_bundle: "./notes"
-origin_id: "Muse-ding-sync"
-package_id: "Muse-ding-sync-20261001-k7"
+origin_id: "Muse-demo-sync"
+package_id: "Muse-demo-sync-20261001-k7"
 device_note: "MacBook Air"
 cloud_repo: "example/private-handoff"
 cloud_path: "handoff/"
@@ -133,7 +133,7 @@ cloud_path: "handoff/"
 - 仓库：`example-blog`，分支 `main`，最近提交 `a1b2c3d`，remote `https://github.com/example/example-blog`。导出前已建议用户自行 commit 并 push（技能不代提交）。导出时工作区干净。
 - 大文件：不嵌入。演示数据集在 `https://example.com/drive/demo-dataset`，建议落点 `./data/`。
 - 小资料：与本文件同一文件夹（无密钥）。
-- 交接云端（虚构，不要拉取或删除）：`example/private-handoff` 的 `handoff/Muse-ding-sync-20261001-k7/Muse-ding-sync-20261001-k7.md`。全库最新一份是当前事实。推送时每个来源只留最新一份。这不是上面的项目仓库。
+- 交接云端（虚构，不要拉取或删除）：`example/private-handoff` 的 `handoff/Muse-demo-sync-20261001-k7/Muse-demo-sync-20261001-k7.md`。全库最新一份是当前事实。推送时每个来源只留最新一份。这不是上面的项目仓库。
 
 | 包内相对路径 | 建议相对落点 | 简述 |
 |---|---|---|
