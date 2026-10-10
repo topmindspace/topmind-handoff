@@ -1,14 +1,14 @@
 ---
 handoff_version: "1.1"
 generated_at: 2026-10-01T10:00:00+08:00
-generator: "示例助手 + topmind-handoff 0.4.10"
+generator: "示例助手 + topmind-handoff 0.4.11"
 subject: "张三"
 language: zh-CN
 scope: private
 mode: migration
 skills_manifest:
   - name: topmind-handoff
-    version: "0.4.10"
+    version: "0.4.11"
     source: "npm:@topmindspace/topmind-handoff"
     install: npm-copy
   - name: 示例技能A
@@ -110,7 +110,7 @@ cloud_path: "handoff/"
 ## 7. 环境与技能（Environment & skills）
 
 - 环境：示例助手（账号 zhangsan，记忆随账号同步）；工作通常放在 `~/work/blog`。
-- 已装技能：topmind-handoff 0.4.10（npm 包 @topmindspace/topmind-handoff）：跨环境交接；示例技能A 1.2.0（本地自建）：用于演示技能清单格式。
+- 已装技能：topmind-handoff 0.4.11（npm 包 @topmindspace/topmind-handoff）：跨环境交接；示例技能A 1.2.0（本地自建）：用于演示技能清单格式。
 - 路径：技能目录 `~/.claude/skills`；博客草稿输出到 `~/work/blog/drafts`。
 - 连接器：GitHub（读写自己的仓库）；日历（只读）。
 

@@ -89,7 +89,7 @@ topmind-handoff/
 ---
 handoff_version: "1.1"
 generated_at: 2026-10-01T15:30:00+08:00
-generator: "Claude Code + topmind-handoff 0.4.10"
+generator: "Claude Code + topmind-handoff 0.4.11"
 language: zh-CN
 scope: private
 ---
@@ -118,5 +118,5 @@ scope: private
 
 ## 版本
 
-当前技能版本 `0.4.10`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.4.11`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
 已配置私有云端时，每次推送默认清理该来源的旧包（规则见 `references/export.md`「云端推送与清理」，删除清单会在定稿前列给你确认）。说「只本地」则不推、不删。
