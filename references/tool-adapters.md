@@ -108,8 +108,8 @@
 
 导出时给来源一个稳定的 `origin_id`（见 `spec.md`）：`工具-账号标识-范围`。
 
-- 记忆会在用户的手机和电脑之间自动带上（常见于 Muse 这类账号同步）：范围为 `sync`，例如 `Muse-ding-sync`。设备名只放 `device_note`，不进 id。
-- 本机安装、记忆不跟着账号走：设备名写进 id，例如 `GrokBot-ding-MacBook-Air`。两台笔记本不会被当成同一个来源。
+- 记忆会在用户的手机和电脑之间自动带上（常见于 Muse 这类账号同步）：范围为 `sync`，例如 `Muse-demo-sync`。设备名只放 `device_note`，不进 id。
+- 本机安装、记忆不跟着账号走：设备名写进 id，例如 `GrokBot-demo-MacBook-Air`。两台笔记本不会被当成同一个来源。
 - 账号标识用用户认得的 handle，不要 token；邮箱只有用户要求保留才用。
 - 云端交接只走用户已经配好的私有 Git。没有 git 凭据就说明缺少凭据并停下，不要索要 token。公开仓库不推、不拉、不删。
 
