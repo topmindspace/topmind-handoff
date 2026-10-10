@@ -19,7 +19,7 @@ compatibility: >-
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored.
 metadata:
-  version: "0.4.10"
+  version: "0.4.11"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
   updated: "2026-10-08"

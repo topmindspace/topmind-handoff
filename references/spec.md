@@ -159,7 +159,7 @@ frontmatter 之后、正文 `#` 标题之前，放一块固定的**接收指引*
 ---
 handoff_version: "1.1"          # 包格式版本。当前仍生成 1.1（1.0 包仍兼容）
 generated_at: 2026-10-01T15:30:00+08:00   # 整包导出时间，ISO 8601，带时区
-generator: "Claude Code + topmind-handoff 0.4.10"  # 工具名 + 技能版本
+generator: "Claude Code + topmind-handoff 0.4.11"  # 工具名 + 技能版本
 subject: "张三"                 # 可选
 language: zh-CN                # zh-CN / en
 scope: private                 # 只在用户自己的工具间流转
@@ -199,7 +199,7 @@ cloud_path: "handoff/"         # 可选 1.1：仓库内相对目录，缺省 han
 - `assets_bundle`（可选 1.1 扩展）：该包文件夹内、相对这份 markdown 的路径。没有小资料就省略。新包不再使用同级 `-assets/`。
   不写绝对家目录；用户名用 `~`。
 - `scope`：目前只有 `private`。不得把包发给第三方。
-- `generator` 里的技能版本（如 `topmind-handoff 0.4.10`）与 `package.json`、
+- `generator` 里的技能版本（如 `topmind-handoff 0.4.11`）与 `package.json`、
   `SKILL.md` 的 `metadata.version` 一致。
   接收方用这个版本和本机技能比较；字符串里没有版本号就不要声称「更旧」。
 - `origin_id`、`package_id`、`device_note`、`cloud_repo`、`cloud_path`：都可选。
