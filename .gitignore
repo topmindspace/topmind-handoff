@@ -6,3 +6,4 @@ release-assets/
 dist/
 *.tgz
 package-lock.json
+scripts/.privacy-deny.local
