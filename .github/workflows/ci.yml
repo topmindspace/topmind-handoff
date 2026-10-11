@@ -31,6 +31,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      # 个人主目录路径、个人邮箱、密钥形状（本机屏蔽词放 scripts/.privacy-deny.local，不入库）
+      - name: Privacy scan (paths, emails, secrets)
+        run: python3 scripts/ci_privacy_scan.py
+
       # Agent Skills 官方校验器：frontmatter 只允许规范字段，自定义字段在 metadata 下
       - name: Agent Skills validate
         run: |
