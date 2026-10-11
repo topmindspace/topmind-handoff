@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Privacy scan (no secrets / PII in skill files)
+        run: |
+          set -euo pipefail
+          # 技能本身不得携带任何用户数据：拦截常见凭证与证件号模式
+          if grep -rniE \
+            -e 'github_pat_[A-Za-z0-9_]+' \
+            -e 'sk-[A-Za-z0-9]{16,}' \
+            -e 'ghp_[A-Za-z0-9]{16,}' \
+            -e 'xox[bap]-[A-Za-z0-9-]{10,}' \
+            --include='*.md' --include='*.json' --include='*.yml' --include='*.yaml' \
+            . ; then
+            echo "privacy scan FAILED: possible credential pattern found" >&2
+            exit 1
+          fi
+          echo "privacy scan OK"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # 个人主目录路径、个人邮箱、密钥形状（本机屏蔽词放 scripts/.privacy-deny.local，不入库）
+      - name: Privacy scan (paths, emails, secrets)
+        run: python3 scripts/ci_privacy_scan.py
+
+      # Agent Skills 官方校验器：frontmatter 只允许规范字段，自定义字段在 metadata 下
+      - name: Agent Skills validate
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet skills-ref
+          agentskills validate "$PWD"
+
+      # 版本一致、接收指引模板与 assets 同步、引用存在、云端清理规则只写一份
+      - name: Repo checks
+        run: |
+          set -euo pipefail
+          grep -q '^name: topmind-handoff' SKILL.md
+          grep -q 'handoff_version:' assets/handoff-template.md
+          python3 scripts/check_repo.py
