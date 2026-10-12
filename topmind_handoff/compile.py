@@ -283,6 +283,57 @@ def _apply_overrides(shared: str, overrides: dict[str, str]) -> str:
     return _ensure_nl("\n".join(kept))
 
 
+_FACT_POINTER = re.compile(r"^- 见 facts/(?P<name>[^/\s\\]+)\.md")
+
+
+def _path_inside(path: Path, directory: Path) -> bool:
+    try:
+        return path.resolve().parent == directory.resolve()
+    except OSError:
+        return False
+
+
+def _archived_override_lines(facts: Path, name: str, overrides: dict[str, str], seen: set[str]) -> list[str]:
+    """Override lines from one facts archive. Other lines, including details, stay out."""
+    if not name or name in {".", ".."} or any(mark in name for mark in ("/", "\\", "\x00")):
+        return []
+    candidate = facts / f"{name}.md"
+    if not facts.is_dir() or not _path_inside(candidate, facts) or not candidate.is_file():
+        return []
+    found: list[str] = []
+    for archived in candidate.read_text(encoding="utf-8").splitlines():
+        replacement = _override_line(archived, overrides)
+        if replacement is None:
+            continue
+        match = _FACT_LINE.match(replacement.rstrip())
+        if match is None or match.group("cid") in seen:
+            continue
+        seen.add(match.group("cid"))
+        found.append(replacement)
+    return found
+
+
+def _project_shared(repo: Path, shared: str, overrides: dict[str, str]) -> str:
+    """Apply card overrides to the shared index and to due lines archived behind a pointer."""
+    projected = _apply_overrides(shared, overrides)
+    if not overrides:
+        return projected
+    seen: set[str] = set()
+    for line in projected.splitlines():
+        match = _FACT_LINE.match(line.rstrip())
+        if match and match.group("cid") in overrides:
+            seen.add(match.group("cid"))
+    facts = repo / "facts"
+    output: list[str] = []
+    for line in projected.splitlines():
+        output.append(line)
+        pointer = _FACT_POINTER.match(line.rstrip())
+        if pointer is None:
+            continue
+        output.extend(_archived_override_lines(facts, pointer.group("name"), overrides, seen))
+    return _ensure_nl("\n".join(output))
+
+
 def _conflicts_for_origin(compiled: Compiled, origin: str) -> str:
     blocks: list[str] = []
     for result in sorted(compiled.claims.values(), key=lambda item: (item.scope, item.claim_id)):
@@ -321,17 +372,24 @@ def startup_read(repo: Path, origin: str) -> str:
     """
     repo = Path(repo)
     compiled = build_compiled(repo)
-    shared_path = repo / "views" / "shared.md"
-    shared = shared_path.read_text(encoding="utf-8") if shared_path.is_file() else render_views(compiled)["shared.md"]
+    views = repo / "views"
+    shared_path = views / "shared.md"
+    if shared_path.is_file() and _path_inside(shared_path, views):
+        shared = shared_path.read_text(encoding="utf-8")
+    else:
+        shared = render_views(compiled)["shared.md"]
     card = compiled.cards.get(origin)
     overrides = card.overrides if card else {}
-    projected = _apply_overrides(shared, overrides)
+    projected = _project_shared(repo, shared, overrides)
     role = card.role if card else ""
-    scenario_path = repo / "views" / f"scenario-{role}.md" if role else None
-    if scenario_path and scenario_path.is_file():
+    filename = scenario_filename(role) if role else None
+    scenario_path = views / filename if filename else None
+    if scenario_path is not None and not _path_inside(scenario_path, views):
+        scenario_path = None
+    if scenario_path is not None and scenario_path.is_file():
         scenario = scenario_path.read_text(encoding="utf-8")
-    elif role:
-        scenario = render_views(compiled).get(f"scenario-{role}.md", "# 场景\n\n（无）\n")
+    elif filename:
+        scenario = render_views(compiled).get(filename, "# 场景\n\n（无）\n")
     else:
         scenario = "（无）\n"
     card_text = card.raw if card else "（无）\n"

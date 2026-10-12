@@ -612,6 +612,188 @@ refreshed: 2026-10-12
         self.assertIn("只在 Claude", claude)
         self.assertNotIn("只在 Grok", claude)
 
+    def test_set_based_on_a_proposal_stays_on_the_chain(self) -> None:
+        write(
+            self.root,
+            "outbox/Muse-demo-sync.md",
+            """\
+- op_id: Muse-demo-sync#1
+  op: set
+  id: scene-w
+  scope: scenario:writing
+  base: none
+  at: 2026-10-12
+  text: 非主环境句子
+- op_id: Muse-demo-sync#2
+  op: propose
+  id: scene-prop
+  scope: scenario:writing
+  base: none
+  at: 2026-10-12
+  text: 显式提议
+- op_id: Muse-demo-sync#3
+  op: set
+  id: scene-split
+  scope: scenario:writing
+  base: none
+  at: 2026-10-12
+  text: 分叉提议
+""",
+        )
+        write(
+            self.root,
+            "outbox/Grok-demo-sync.md",
+            """\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: scene-w
+  scope: scenario:writing
+  base: Muse-demo-sync#1
+  at: 2026-10-12
+  text: 接上提议
+- op_id: Grok-demo-sync#2
+  op: set
+  id: scene-prop
+  scope: scenario:writing
+  base: Muse-demo-sync#2
+  at: 2026-10-12
+  text: 接上显式提议
+- op_id: Grok-demo-sync#3
+  op: set
+  id: scene-split
+  scope: scenario:writing
+  base: Muse-demo-sync#3
+  at: 2026-10-12
+  text: 甲续
+- op_id: Grok-demo-sync#4
+  op: set
+  id: local-tool
+  scope: origin:Grok-demo-sync
+  base: ClaudeCode-demo-sync#2
+  at: 2026-10-12
+  text: 自己接上
+- op_id: Grok-demo-sync#5
+  op: set
+  id: fact-x
+  scope: shared
+  base: Missing#1
+  at: 2026-10-12
+  text: 悬空句
+""",
+        )
+        write(
+            self.root,
+            "outbox/ClaudeCode-demo-sync.md",
+            """\
+- op_id: ClaudeCode-demo-sync#1
+  op: set
+  id: name
+  scope: shared
+  slice: identity
+  base: none
+  at: 2026-10-12
+  text: 机器自称
+- op_id: ClaudeCode-demo-sync#2
+  op: set
+  id: local-tool
+  scope: origin:Grok-demo-sync
+  base: none
+  at: 2026-10-12
+  text: 别人的环境提议
+""",
+        )
+        write(
+            self.root,
+            "outbox/human.md",
+            """\
+- op_id: human#1
+  op: set
+  id: name
+  scope: shared
+  slice: identity
+  base: ClaudeCode-demo-sync#1
+  at: 2026-10-12
+  text: 张三
+- op_id: human#2
+  op: set
+  id: scene-split
+  scope: scenario:writing
+  base: Muse-demo-sync#3
+  at: 2026-10-12
+  text: 乙续
+""",
+        )
+        compile_repo(self.root)
+        writing = (self.root / "views" / "scenario-writing.md").read_text(encoding="utf-8")
+        shared = (self.root / "views" / "shared.md").read_text(encoding="utf-8")
+        status = (self.root / "STATUS.md").read_text(encoding="utf-8")
+        self.assertIn("- 接上提议 {id:scene-w}", writing)
+        self.assertNotIn("非主环境句子", writing)
+        self.assertIn("- 接上显式提议 {id:scene-prop}", writing)
+        self.assertNotIn("- 显式提议 {id:scene-prop}", writing)
+        self.assertIn("未裁决", writing)
+        self.assertIn("甲续", writing)
+        self.assertIn("乙续", writing)
+        self.assertNotIn("分叉提议", writing)
+        self.assertIn("- 张三 {id:name}", shared)
+        self.assertNotIn("机器自称", shared)
+        self.assertNotIn("悬空句", shared)
+        self.assertIn("非主环境句子", status)
+        self.assertIn("机器自称", status)
+        self.assertIn("显式提议", status)
+        self.assertIn("分叉提议", status)
+        started = startup_read(self.root, "Grok-demo-sync")
+        self.assertIn("自己接上", started)
+        self.assertNotIn("别人的环境提议", started)
+
+    def test_startup_read_does_not_follow_a_hostile_scenario_role(self) -> None:
+        views = self.root / "views"
+        views.mkdir(parents=True)
+        (views / "scenario-writing").mkdir()
+        planted = self.root / "evil.md"
+        planted.write_text("LEAKED_SCENARIO\n", encoding="utf-8")
+        write(
+            self.root,
+            "environments/Grok-demo-sync.md",
+            """\
+---
+origin: Grok-demo-sync
+role: writing/../../evil
+refreshed: 2026-10-12
+---
+
+路径：~/writing
+""",
+        )
+        before = {path for path in self.root.rglob("*") if path.is_file()}
+        started = startup_read(self.root, "Grok-demo-sync")
+        after = {path for path in self.root.rglob("*") if path.is_file()}
+        self.assertNotIn("LEAKED_SCENARIO", started)
+        self.assertEqual(before, after)
+        outside = self.root.parent / f"symlink-secret-{self.root.name}.md"
+        link = views / "scenario-writing.md"
+        try:
+            outside.write_text("SYMLINK_LEAK\n", encoding="utf-8")
+            link.symlink_to(outside)
+            write(
+                self.root,
+                "environments/Grok-demo-sync.md",
+                """\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: 2026-10-12
+---
+
+路径：~/writing
+""",
+            )
+            followed = startup_read(self.root, "Grok-demo-sync")
+            self.assertNotIn("SYMLINK_LEAK", followed)
+            self.assertNotIn("LEAKED_SCENARIO", followed)
+        finally:
+            outside.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()

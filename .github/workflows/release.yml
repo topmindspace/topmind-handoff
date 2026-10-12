@@ -53,7 +53,27 @@ jobs:
           mkdir -p release-assets
           zip -r release-assets/topmind-handoff.zip \
             SKILL.md references assets README.md LICENSE CHANGELOG.md package.json \
-            -x '.*'
+            topmind_handoff scripts/compile_memory.py \
+            -x '.*' '*__pycache__*' '*.pyc'
+          python3 - <<'PY'
+          import zipfile
+          names = zipfile.ZipFile("release-assets/topmind-handoff.zip").namelist()
+          required = [
+              "scripts/compile_memory.py",
+              "topmind_handoff/__init__.py",
+              "topmind_handoff/model.py",
+              "topmind_handoff/compile.py",
+              "topmind_handoff/admin.py",
+              "topmind_handoff/package.py",
+              "topmind_handoff/cli.py",
+          ]
+          missing = [item for item in required if item not in names]
+          if missing:
+              raise SystemExit("release zip missing: " + ", ".join(missing))
+          leaked = [item for item in names if item.endswith(".pyc") or "__pycache__" in item]
+          if leaked:
+              raise SystemExit("release zip has bytecode: " + ", ".join(leaked))
+          PY
           ls -la release-assets/
 
       - name: Create GitHub Release

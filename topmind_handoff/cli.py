@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from topmind_handoff.admin import PublicRepoRefused, init_memory_repo, organize_repo, set_scenario_owner
-from topmind_handoff.compile import compile_repo, status_is_valid
+from topmind_handoff.compile import compile_repo, startup_read, status_is_valid
 from topmind_handoff.package import render_legacy_package, render_package
 
 USAGE = """\
@@ -20,6 +20,7 @@ USAGE = """\
   python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> [--out 文件]
   python3 scripts/compile_memory.py --render-legacy --out 文件
   python3 scripts/compile_memory.py --own <记忆目录> --scenario <场景> --origin <origin_id>
+  python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 """
 
 
@@ -45,6 +46,8 @@ def main(argv: list[str]) -> int:
         return _render_legacy(argv[1:])
     if argv[0] == "--own":
         return _own(argv[1:])
+    if argv[0] == "--startup":
+        return _startup(argv[1:])
     if argv[0].startswith("--"):
         print(USAGE)
         return 2
@@ -114,8 +117,25 @@ def _own(argv: list[str]) -> int:
     parser.add_argument("--scenario", required=True)
     parser.add_argument("--origin", required=True)
     args = parser.parse_args(argv)
-    set_scenario_owner(Path(args.path), args.scenario, args.origin)
+    try:
+        set_scenario_owner(Path(args.path), args.scenario, args.origin)
+    except ValueError as exc:
+        print(str(exc))
+        return 1
     print(f"{args.origin} owns scenario.{args.scenario}")
+    return 0
+
+
+def _startup(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("path")
+    parser.add_argument("--origin", required=True)
+    args = parser.parse_args(argv)
+    try:
+        print(startup_read(Path(args.path), args.origin), end="")
+    except ValueError as exc:
+        print(str(exc))
+        return 1
     return 0
 
 

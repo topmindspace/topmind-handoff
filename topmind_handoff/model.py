@@ -283,22 +283,27 @@ def compile_ops(ops: list[Op], authority: dict[str, str]) -> tuple[dict[tuple[st
 
     proposals = [op for op in unique if is_proposal(op, authority)]
     applicable = [op for op in unique if not is_proposal(op, authority)]
+    # A demoted op stays out of the view, but a later allowed set may use its op_id as base.
+    anchors: dict[tuple[str, str], set[str]] = {}
+    for op in proposals:
+        anchors.setdefault((op.scope, op.claim_id), set()).add(op.op_id)
     grouped: dict[tuple[str, str], list[Op]] = {}
     for op in applicable:
         grouped.setdefault((op.scope, op.claim_id), []).append(op)
 
     claims: dict[tuple[str, str], ClaimResult] = {}
     for key, group in grouped.items():
-        claims[key] = _compile_claim(key[0], key[1], group)
+        claims[key] = _compile_claim(key[0], key[1], group, anchors.get(key, set()))
     return claims, proposals
 
 
-def _compile_claim(scope: str, claim_id: str, ops: list[Op]) -> ClaimResult:
+def _compile_claim(scope: str, claim_id: str, ops: list[Op], anchors: set[str] | None = None) -> ClaimResult:
     regular = [op for op in ops if not op.closes]
     merges = [op for op in ops if op.closes]
     linked: dict[str, Op] = {}
     pending = sorted(regular, key=lambda op: op.op_id)
     closed: set[str] = set()
+    anchored = set(anchors or ())
 
     def link_ready() -> None:
         nonlocal pending
@@ -307,7 +312,7 @@ def _compile_claim(scope: str, claim_id: str, ops: list[Op]) -> ClaimResult:
             progressed = False
             still: list[Op] = []
             for op in pending:
-                if op.base is None or op.base in linked:
+                if op.base is None or op.base in linked or op.base in anchored:
                     linked[op.op_id] = op
                     progressed = True
                 else:

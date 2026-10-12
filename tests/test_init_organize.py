@@ -404,6 +404,138 @@ override.pref-theme: 覆盖句
             self.assertFalse(role_repo.exists())
             self.assertFalse((base / "evil.md").exists())
 
+    def test_startup_override_follows_a_collapsed_due_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "repo"
+            today = date(2026, 10, 12)
+            write(
+                root,
+                "authority.md",
+                """\
+- scope: shared.identity
+  owner: human
+- scope: shared.boundaries
+  owner: human
+""",
+            )
+            blocks = []
+            for index in range(219):
+                blocks.append(
+                    f"""\
+- op_id: Grok-demo-sync#{index}
+  op: set
+  id: pref-{index}
+  scope: shared
+  slice: preference
+  base: none
+  at: {today.isoformat()}
+  text: 偏好{index}
+"""
+                )
+            aged = (today - timedelta(days=90)).isoformat()
+            blocks.append(
+                f"""\
+- op_id: Grok-demo-sync#219
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: none
+  at: {aged}
+  text: 深色方案
+  detail: |
+    原始细节
+"""
+            )
+            write(root, "outbox/Grok-demo-sync.md", "\n".join(blocks))
+            write(
+                root,
+                "environments/Grok-demo-sync.md",
+                f"""\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: {today.isoformat()}
+override.pref-theme: 覆盖句
+---
+
+路径：~/writing
+""",
+            )
+            organize_repo(root, today)
+            shared_path = root / "views" / "shared.md"
+            shared = shared_path.read_text(encoding="utf-8")
+            self.assertIn("见 facts/shared-preference.md", shared)
+            self.assertNotIn("深色方案", shared)
+            self.assertNotIn("覆盖句", shared)
+            archived = (root / "facts" / "shared-preference.md").read_text(encoding="utf-8")
+            self.assertIn("- 深色方案 {id:pref-theme} （未复核）", archived)
+            self.assertIn("原始细节", archived)
+            self.assertIn("偏好0", archived)
+            self.assertIn("偏好218", archived)
+            secret = base / "secret.md"
+            secret.write_text("SECRET_OUTSIDE\n", encoding="utf-8")
+            shared_path.write_text(shared + "- 见 facts/../../secret.md\n", encoding="utf-8")
+            shared = shared_path.read_text(encoding="utf-8")
+            started = startup_read(root, "Grok-demo-sync")
+            self.assertIn("- 覆盖句 {id:pref-theme}", started)
+            self.assertNotIn("深色方案", started)
+            self.assertNotIn("原始细节", started)
+            self.assertNotIn("偏好218", started)
+            self.assertNotIn("SECRET_OUTSIDE", started)
+            self.assertEqual(shared_path.read_text(encoding="utf-8"), shared)
+            script = ROOT / "scripts" / "compile_memory.py"
+            proc = subprocess.run(
+                [sys.executable, str(script), "--startup", str(root), "--origin", "Grok-demo-sync"],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn("- 覆盖句 {id:pref-theme}", proc.stdout)
+            self.assertNotIn("深色方案", proc.stdout)
+            self.assertNotIn("原始细节", proc.stdout)
+            self.assertNotIn("SECRET_OUTSIDE", proc.stdout)
+            self.assertEqual(shared_path.read_text(encoding="utf-8"), shared)
+
+    def test_own_rejects_scenario_outside_the_repo(self) -> None:
+        script = ROOT / "scripts" / "compile_memory.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            repo = base / "repo"
+            write(
+                repo,
+                "authority.md",
+                """\
+- scope: shared.identity
+  owner: human
+- scope: shared.boundaries
+  owner: human
+- scope: scenario.writing
+  owner: Muse-demo-sync
+""",
+            )
+            before = (repo / "authority.md").read_bytes()
+            outside = base / "evil.md"
+            commands = [
+                ["--scenario", "../evil", "--origin", "Grok-demo-sync"],
+                ["--scenario", "nested/evil", "--origin", "Grok-demo-sync"],
+                ["--scenario", str(base / "escaped"), "--origin", "Grok-demo-sync"],
+                ["--scenario", "writing", "--origin", "../evil"],
+            ]
+            for extra in commands:
+                proc = subprocess.run(
+                    [sys.executable, str(script), "--own", str(repo), *extra],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertEqual((repo / "authority.md").read_bytes(), before)
+                self.assertFalse(outside.exists())
+                self.assertFalse((repo / "evil.md").exists())
+                self.assertFalse((base / "escaped.md").exists())
+                self.assertEqual(list(repo.rglob("*.md")), [repo / "authority.md"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -114,6 +114,9 @@ def init_memory_repo(
 
 def set_scenario_owner(repo: Path, scenario: str, origin: str) -> None:
     """Give one origin direct writes on a scenario. Identity and boundaries stay with human."""
+    if scenario_filename(scenario) is None:
+        raise ValueError("场景名必须是单个路径段")
+    origin = safe_origin(origin)
     path = Path(repo) / "authority.md"
     current = parse_authority(path.read_text(encoding="utf-8")) if path.is_file() else {}
     current["shared.identity"] = "human"

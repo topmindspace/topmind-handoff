@@ -21,9 +21,9 @@ override.pref-theme: 本环境用浅色终端
 - topmind-handoff 0.5.0（github:topmindspace/topmind-handoff）
 ```
 
-- `role` 决定开工时读哪一个 `views/scenario-<role>.md`。
+- `role` 决定 `--startup` 带上哪一个场景。规则见 `references/compile.md`。
 - `refreshed` 是这台最后一次替换卡片的日期。满 90 天，整理时标「未刷新」，文件还在。
-- `override.<id>` 只在这台的开工读取里盖住同 id 的共享事实。共享视图文件保持原句。
+- `override.<id>` 只进入 `--startup` 的投影。规则见 `references/compile.md`。
 - 路径里的家目录写成 `~`。不写 token、cookie、未获同意的邮箱。
 - 看不到的环境不要写成「没有」。
 
