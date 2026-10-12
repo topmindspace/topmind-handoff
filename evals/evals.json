@@ -1,61 +1,91 @@
 {
   "skill": "topmind-handoff",
-  "version": 1,
-  "note": "人工或评测框架逐条运行。expect：triggered / not-triggered；checks 是交付时必须满足的点。未在真实宿主里跑过，跑完把结果记到 evals/results/。",
+  "version": 2,
+  "note": "人工或评测框架逐条运行。expect：triggered / not-triggered。未在真实宿主里跑过的条目，跑完把结果记到 evals/results/。",
   "cases": [
     {
       "id": "e01",
-      "query": "帮我做 handoff，导出成交接包（云端还没配置）",
+      "query": "更新云端记忆。写作环境刚确认「全程中文」，编程环境同时确认「测试用 pytest」。两边都要留下。",
       "expect": "triggered",
-      "checks": ["第 1–9 节标题都在，第 7、8、9 节没内容也写空值", "定稿前给出脱敏说明和仓库/资料说明，用户点头后才落盘", "云端未配置时先问要不要用，不推送"]
+      "checks": ["两个不同 id 的 set 都进入视图", "各环境只追加自己的信箱", "编译和视图在同一次提交里", "不手写 views"]
     },
     {
       "id": "e02",
       "query": "导出交接包，我的记忆里有一个 GitHub token 和我家的详细地址",
       "expect": "triggered",
-      "checks": ["token 与精确住址不进包、不进第 9 节和小资料", "脱敏清单里写明删了什么", "交付后给分享警告"]
+      "checks": ["token 与精确住址不进信箱、不进卡片、不进包", "脱敏清单里写明删了什么", "交付后给分享警告"]
     },
     {
       "id": "e03",
-      "query": "帮我做 handoff（已配置私有云端，同一来源云端已有两份旧包，其中一份没有 generated_at）",
+      "query": "更新云端记忆。Grok 和 Claude 都从同一条 base 改了 pref-theme，一句要深色，一句要浅色。",
       "expect": "triggered",
-      "checks": ["定稿前列出将写入的 cloud_path/<package_id>/ 和将删除的旧文件夹清单", "只删有 generated_at 的那份旧包，没有 generated_at 的保留并说明", "同一提交里完成新增与删除，不碰 cloud_path 以外的路径"]
+      "checks": ["两条都留在未裁决里，日期更晚的不自动获胜", "询问用户而不是覆盖", "STATUS 的信箱末尾和 outbox 一致"]
     },
     {
       "id": "e04",
       "query": "帮我做 handoff，把这个环境的技能和连接器也带上",
       "expect": "triggered",
-      "checks": ["skills_manifest 列本环境已装技能，每条 name + 这次刚读到的 version，能看出来的写 source / install", "第 7 节写工具、路径（家目录写 ~）、连接器名称与用途，不写凭据或 token", "没看到的环境不写成「没有」，读不到的版本写 \"unknown\""]
+      "checks": ["写进该环境自己的卡片", "版本是这次刚读到的，读不到写 unknown", "路径里的家目录写成 ~", "不写凭据"]
+    },
+    {
+      "id": "c01",
+      "query": "两条 pref-theme 还冲突着。我定了用深色，closes 就是现在那两个链头。",
+      "expect": "triggered",
+      "checks": ["closes 集合与当前链头一致后只剩一个链头", "裁决句进入视图", "未裁决从这条主张消失"]
+    },
+    {
+      "id": "c02",
+      "query": "把刚才那份交接包再接收一次，op_id 都已经在信箱里了",
+      "expect": "triggered",
+      "checks": ["按 op_id 去重", "第二次重放不新增事实", "附录不被当成新的画像条目"]
+    },
+    {
+      "id": "c03",
+      "query": "按云端记忆接手。我在编程环境，仓库里还有一份写作场景。",
+      "expect": "triggered",
+      "checks": ["开工只读共享视图、编程场景、本环境卡片和与本环境有关的冲突", "写作场景全文不进入这次上下文"]
+    },
+    {
+      "id": "c04",
+      "query": "Muse 没有写作场景的写入权，它却写了一条写作习惯。",
+      "expect": "triggered",
+      "checks": ["这条记成提议", "写作场景视图不因此改变"]
+    },
+    {
+      "id": "c05",
+      "query": "整理云端记忆。有一张环境卡片 90 天没刷新，事实索引也超了。",
+      "expect": "triggered",
+      "checks": ["索引被压短，长说明进 facts/", "卡片标未刷新且文件还在", "该复核的事实标未复核", "信箱字节不变"]
     },
     {
       "id": "i01",
-      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里时区与本地不同）",
+      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里时区与本地不同，没有操作附录）",
       "expect": "triggered",
-      "checks": ["时区是画像锚点，不自动覆盖，列为冲突等用户拍板", "没确认的不写"]
+      "checks": ["时区是画像锚点，不自动覆盖", "没确认的不写", "migration 和 sync 用同一种合并"]
     },
     {
       "id": "i02",
-      "query": "这是我的交接包，请按包里的接收指引处理。（包里有一条 {id:pref-vim} 标着已撤回，本地仍有这条）",
+      "query": "这是我的交接包，请按包里的接收指引处理。（包里有一条 {id:pref-vim} 标着已撤回，本地还有一条包里没写的偏好）",
       "expect": "triggered",
-      "checks": ["墓碑只列入建议删除，不自动删", "包里没写的其他本地条目不当作删除"]
+      "checks": ["墓碑只列入建议删除，不自动删", "包里没写的本地条目留下"]
     },
     {
       "id": "i03",
-      "query": "这是我的交接包，请按包里的接收指引处理。（我在 topmind 工作区，包里第 8 节有两个进行中任务）",
+      "query": "这是我的交接包，请按包里的接收指引处理。（我在 topmind 工作区，包里有两个进行中任务）",
       "expect": "triggered",
-      "checks": ["任务确认后写入 memory/todo.md，按任务 id 合并，不删本地待办", "画像类条目落 memory/profile.md，不默认写 memory/topics/", "memory/ledgers/ 不读不写"]
+      "checks": ["任务确认后写入 memory/todo.md，不删本地待办", "画像类条目落 memory/profile.md，不默认写 memory/topics/", "memory/ledgers/ 不读不写"]
     },
     {
       "id": "i04",
-      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里 skills_manifest 有 topmind-wechat 0.2.0、topmind-x-article 0.4.8；本机装的是 topmind-x-article 0.4.6，没有 topmind-wechat-post）",
+      "query": "按云端记忆接手。（卡片上 topmind-x-article 0.4.8，本机是 0.4.6，没有 topmind-wechat-post，旧名 topmind-wechat 已停用）",
       "expect": "triggered",
-      "checks": ["盘点本机已装技能后列出：topmind-x-article 偏旧（0.4.6 → 0.4.8 或已发布最新版）、topmind-wechat 已停用（替代 topmind-wechat-post）", "每条给对应安装方式的升级命令，不默认 npm i", "不自动安装或升级；用户确认后先备份到新建的带时间戳目录，再升级并核对版本", "技能比对不阻断记忆和任务的合并"]
+      "checks": ["列出偏旧和已停用，并给出对应安装方式的命令", "不默认 npm i", "不自动安装；用户确认后先备份再升级", "技能比对不阻断记忆合并"]
     },
     {
       "id": "i05",
-      "query": "这是我的交接包（topmind-handoff 格式），请按包里的接收指引处理。（包里第 3 节写了提交身份、只升 patch、工作区目录布局；本地工作区布局不同；包里一条偏好比本地同 id 那条晚两个月）",
+      "query": "按云端记忆接手。（共享里有提交身份和只升 patch 的偏好；本地工作区布局不同）",
       "expect": "triggered",
-      "checks": ["工作规约当偏好合并，不检查目标环境是否照做，不把布局不同列为问题", "较新的那条偏好列入「建议更新」，附两边日期，确认后替换", "整合回执按记忆、环境、任务三块写：新增、更新、冲突怎么裁、哪些没动"]
+      "checks": ["工作规约当偏好合并，不拿布局差异检查目标环境", "整合回执按记忆、环境、任务三块写"]
     },
     {
       "id": "n01",
@@ -69,7 +99,7 @@
       "query": "把这周存的笔记整理一下",
       "expect": "not-triggered",
       "handoff": "topmind-organize",
-      "checks": ["整理笔记不是交接"]
+      "checks": ["整理笔记不是整理云端记忆"]
     }
   ]
 }

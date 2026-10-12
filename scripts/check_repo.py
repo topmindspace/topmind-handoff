@@ -7,8 +7,8 @@
    assets/handoff-template.md 与 references/spec.md 示例里的 generator、CHANGELOG 最近版本
 2. 接收指引同步：references/spec.md 的中文模板逐字出现在 assets/handoff-template.md、assets/handoff-example.md
 3. 引用存在：SKILL.md、references/、assets/、README.md 里的 Markdown 相对链接和 `references/…` `assets/…` 路径
-4. 云端清理规则只写一份：除 references/export.md「云端推送与清理」、随包分发的接收指引模板
-   和 assets/ 里的包模板外，SKILL.md、README、references 不得再写「删掉更旧 … generated_at」这类规则
+4. 快照选举和删除旧包的说法只允许出现在 references/compile.md。
+   其他技能文档和 evals 再写 generated_at 选举或旧文件夹清理，就算失败。
 """
 from __future__ import annotations
 
@@ -65,21 +65,22 @@ def ref_errors() -> list[str]:
     return errs
 
 
-CLOUD_RULE_RE = re.compile(r'删[^。]{0,40}旧|旧[^。]{0,40}删')
+RULE_HOME = 'references/compile.md'
+ELECTION_RE = re.compile(r'generated_at.{0,80}(最新|选举|当前事实)|(最新|选举|当前事实).{0,80}generated_at')
+DELETE_RE = re.compile(r'旧文件夹|删掉该来源|删除旧包|只留该来源')
 
 
 def cloud_rule_errors() -> list[str]:
-    """assets/ 是随包分发的包内容（模板与示例），和接收指引一样不算技能文档，不查。"""
+    """快照选举和旧包清理只允许写在编译规则这一处。"""
     errs = []
-    for f in DOCS:
+    files = list(DOCS) + [ROOT / 'evals' / 'evals.json']
+    for f in files:
         rel = f.relative_to(ROOT).as_posix()
-        if rel == 'references/export.md' or rel.startswith('assets/'):
+        if rel == RULE_HOME:
             continue
         for no, line in enumerate(f.read_text(encoding='utf-8').splitlines(), 1):
-            if line.startswith('>'):
-                continue  # 随包分发的接收指引模板
-            if 'generated_at' in line and CLOUD_RULE_RE.search(line):
-                errs.append(f'{rel}:{no}: 云端清理规则应只写在 references/export.md「云端推送与清理」，这里改成指针')
+            if ELECTION_RE.search(line) or DELETE_RE.search(line):
+                errs.append(f'{rel}:{no}: 快照选举或旧包清理只能写在 {RULE_HOME}')
     return errs
 
 
@@ -96,7 +97,7 @@ def main() -> int:
         for e in errs:
             print(f'  ✗ {e}')
         return 1
-    print('PASS: 版本一致、接收指引同步、引用存在、云端清理规则只有一份')
+    print('PASS: 版本一致、接收指引同步、引用存在、快照选举只在编译规则一处')
     return 0
 
 

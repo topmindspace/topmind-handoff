@@ -42,10 +42,13 @@ jobs:
           python3 -m pip install --quiet skills-ref
           agentskills validate "$PWD"
 
-      # 版本一致、接收指引模板与 assets 同步、引用存在、云端清理规则只写一份
+      # 版本一致、接收指引模板与 assets 同步、引用存在、快照选举只在编译规则一处
       - name: Repo checks
         run: |
           set -euo pipefail
           grep -q '^name: topmind-handoff' SKILL.md
           grep -q 'handoff_version:' assets/handoff-template.md
           python3 scripts/check_repo.py
+
+      - name: Compiler tests
+        run: python3 -m unittest discover -s tests -v
