@@ -7,7 +7,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from topmind_handoff.compile import VIEW_ORDER as SLICE_ORDER
-from topmind_handoff.compile import build_compiled, render_status
+from topmind_handoff.compile import build_compiled, compile_repo, render_status
 from topmind_handoff.model import (
     INDEX_BYTE_BUDGET,
     INDEX_LINE_BUDGET,
@@ -102,8 +102,6 @@ def init_memory_repo(
         ),
         encoding="utf-8",
     )
-    from topmind_handoff.compile import compile_repo
-
     compile_repo(path)
     _git_commit(path, "初始化云端记忆")
     return path
@@ -123,6 +121,7 @@ def set_scenario_owner(repo: Path, scenario: str, origin: str) -> None:
         lines.append(f"- scope: {key}")
         lines.append(f"  owner: {current[key]}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    compile_repo(path.parent)
 
 
 def _git_commit(path: Path, message: str) -> None:
@@ -160,6 +159,26 @@ def _review_suffix(op: Op, today: date) -> str:
     if (today - written).days >= limit:
         return " （未复核）"
     return ""
+
+
+def _write_slice_archive(
+    facts_root: Path,
+    fact_prefix: str,
+    slice_name: str,
+    lines: list[str],
+    rich: list[str],
+) -> None:
+    """Keep every collapsed index line, including facts that have no detail."""
+    facts_root.mkdir(parents=True, exist_ok=True)
+    rich_lines = set(rich)
+    body = list(rich)
+    body.extend(line for line in lines if line not in rich_lines)
+    if not body:
+        body = list(lines)
+    (facts_root / f"{fact_prefix}-{slice_name}.md").write_text(
+        _nl("# " + slice_name + "\n\n" + "\n".join(body)),
+        encoding="utf-8",
+    )
 
 
 def _results_for(compiled: Compiled, scope: str) -> list[ClaimResult]:
@@ -222,6 +241,7 @@ def _compact_scope(title: str, results: list[ClaimResult], today: date, facts_ro
         count = len(sections.get(name) or [])
         if count <= 1:
             break
+        _write_slice_archive(facts_root, fact_prefix, name, sections.get(name) or [], details.get(name) or [])
         sections[name] = [f"- 见 facts/{fact_prefix}-{name}.md（{count} 条）"]
         text = render(sections)
     return text

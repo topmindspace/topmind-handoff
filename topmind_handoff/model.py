@@ -269,37 +269,51 @@ def _compile_claim(scope: str, claim_id: str, ops: list[Op]) -> ClaimResult:
     merges = [op for op in ops if op.closes]
     linked: dict[str, Op] = {}
     pending = sorted(regular, key=lambda op: op.op_id)
-    progressed = True
-    while progressed:
-        progressed = False
-        still: list[Op] = []
-        for op in pending:
-            if op.base is None or op.base in linked:
-                linked[op.op_id] = op
-                progressed = True
-            else:
-                still.append(op)
-        pending = still
-    unapplied = list(pending)
+    closed: set[str] = set()
 
-    cited = {op.base for op in linked.values() if op.base}
-    leaves = [op for op in linked.values() if op.op_id not in cited]
-    leaves.sort(key=lambda op: op.op_id)
+    def link_ready() -> None:
+        nonlocal pending
+        progressed = True
+        while progressed:
+            progressed = False
+            still: list[Op] = []
+            for op in pending:
+                if op.base is None or op.base in linked:
+                    linked[op.op_id] = op
+                    progressed = True
+                else:
+                    still.append(op)
+            pending = still
 
+    def leaves_now() -> list[Op]:
+        cited = {op.base for op in linked.values() if op.base} | closed
+        leaves = [op for op in linked.values() if op.op_id not in cited]
+        leaves.sort(key=lambda op: op.op_id)
+        return leaves
+
+    link_ready()
     remaining = sorted(merges, key=lambda op: op.op_id)
+    unapplied = list(pending)
     while remaining:
-        leaf_ids = {op.op_id for op in leaves}
+        leaf_ids = {op.op_id for op in leaves_now()}
         matches = [op for op in remaining if leaf_ids and set(op.closes) == leaf_ids]
         if len(matches) == 1:
             chosen = matches[0]
             remaining = [op for op in remaining if op.op_id != chosen.op_id]
-            leaves = [chosen]
+            linked[chosen.op_id] = chosen
+            closed.update(chosen.closes)
+            link_ready()
             continue
         if len(matches) > 1:
             remaining = [op for op in remaining if op not in matches]
-            leaves = sorted(matches, key=lambda op: op.op_id)
+            for chosen in matches:
+                linked[chosen.op_id] = chosen
+                closed.update(chosen.closes)
+            link_ready()
             continue
         unapplied.extend(remaining)
         break
 
-    return ClaimResult(scope=scope, claim_id=claim_id, heads=leaves, unapplied=unapplied)
+    # Children linked after a close are no longer pending.
+    unapplied = [op for op in unapplied if op.op_id not in linked]
+    return ClaimResult(scope=scope, claim_id=claim_id, heads=leaves_now(), unapplied=unapplied)

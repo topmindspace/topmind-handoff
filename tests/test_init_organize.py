@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from topmind_handoff.admin import PublicRepoRefused, init_memory_repo, organize_repo, set_scenario_owner  # noqa: E402
 from topmind_handoff.model import parse_authority  # noqa: E402
-from topmind_handoff.compile import compile_repo  # noqa: E402
+from topmind_handoff.compile import compile_repo, status_is_valid  # noqa: E402
 
 
 def write(root: Path, rel: str, text: str) -> None:
@@ -229,6 +229,87 @@ refreshed: {fresh}
             fresh_card = (root / "environments" / "Fresh-demo-sync.md").read_text(encoding="utf-8")
             self.assertIn("未刷新", aged_card)
             self.assertNotIn("未刷新", fresh_card)
+
+    def test_organize_archives_short_facts_when_the_index_is_over_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(
+                root,
+                "authority.md",
+                """\
+- scope: shared.identity
+  owner: human
+- scope: shared.boundaries
+  owner: human
+""",
+            )
+            blocks = []
+            for index in range(220):
+                blocks.append(
+                    f"""\
+- op_id: Grok-demo-sync#{index}
+  op: set
+  id: fact-{index}
+  scope: shared
+  slice: fact
+  base: none
+  at: 2026-10-12
+  text: 事实{index}
+"""
+                )
+            write(root, "outbox/Grok-demo-sync.md", "\n".join(blocks))
+            before = (root / "outbox" / "Grok-demo-sync.md").read_bytes()
+            organize_repo(root, date(2026, 10, 12))
+            self.assertEqual((root / "outbox" / "Grok-demo-sync.md").read_bytes(), before)
+            slim = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertLessEqual(len(slim.splitlines()), 200)
+            self.assertIn("见 facts/shared-fact.md", slim)
+            self.assertNotIn("事实219", slim)
+            archived = (root / "facts" / "shared-fact.md").read_text(encoding="utf-8")
+            self.assertIn("事实0", archived)
+            self.assertIn("事实219", archived)
+
+    def test_own_recompiles_former_owner_out_of_the_scenario(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(
+                root,
+                "authority.md",
+                """\
+- scope: shared.identity
+  owner: human
+- scope: shared.boundaries
+  owner: human
+- scope: scenario.writing
+  owner: Muse-demo-sync
+""",
+            )
+            write(
+                root,
+                "outbox/Muse-demo-sync.md",
+                """\
+- op_id: Muse-demo-sync#1
+  op: set
+  id: scene-w
+  scope: scenario:writing
+  base: none
+  at: 2026-10-12
+  text: 原主人句子
+""",
+            )
+            compile_repo(root)
+            self.assertIn("原主人句子", (root / "views" / "scenario-writing.md").read_text(encoding="utf-8"))
+            set_scenario_owner(root, "writing", "Grok-demo-sync")
+            view = (root / "views" / "scenario-writing.md").read_text(encoding="utf-8")
+            status = (root / "STATUS.md").read_text(encoding="utf-8")
+            self.assertNotIn("原主人句子", view)
+            self.assertIn("原主人句子", status)
+            ok, _message = status_is_valid(root)
+            self.assertTrue(ok)
+            owners = parse_authority((root / "authority.md").read_text(encoding="utf-8"))
+            self.assertEqual(owners["scenario.writing"], "Grok-demo-sync")
+            self.assertEqual(owners["shared.identity"], "human")
+            self.assertEqual(owners["shared.boundaries"], "human")
 
 
 if __name__ == "__main__":

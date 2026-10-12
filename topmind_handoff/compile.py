@@ -242,21 +242,38 @@ def save_environment_card(repo: Path, actor: str, origin: str, content: str) -> 
     return dest
 
 
+def _override_line(line: str, overrides: dict[str, str]) -> str | None:
+    if not line.startswith("- "):
+        return None
+    stripped = line.rstrip()
+    for claim_id, text in overrides.items():
+        marker = "{id:" + claim_id + "}"
+        if stripped.endswith(marker):
+            return f"- {text} {marker}"
+    return None
+
+
+def _is_detail_line(line: str) -> bool:
+    return line.startswith("  ") or line.startswith("\t")
+
+
 def _apply_overrides(shared: str, overrides: dict[str, str]) -> str:
     if not overrides:
         return shared
-    lines = []
-    for line in shared.splitlines():
-        replaced = False
-        for claim_id, text in overrides.items():
-            marker = "{id:" + claim_id + "}"
-            if marker in line and line.startswith("- "):
-                lines.append(f"- {text} {marker}")
-                replaced = True
-                break
-        if not replaced:
-            lines.append(line)
-    return _ensure_nl("\n".join(lines))
+    source = shared.splitlines()
+    kept: list[str] = []
+    index = 0
+    while index < len(source):
+        replacement = _override_line(source[index], overrides)
+        if replacement is None:
+            kept.append(source[index])
+            index += 1
+            continue
+        kept.append(replacement)
+        index += 1
+        while index < len(source) and _is_detail_line(source[index]):
+            index += 1
+    return _ensure_nl("\n".join(kept))
 
 
 def _conflicts_for_origin(compiled: Compiled, origin: str) -> str:

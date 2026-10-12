@@ -182,6 +182,45 @@ override.fact-a: 覆盖句只在本环境
         self.assertIn("深色方案", started)
         self.assertNotIn("覆盖句只在本环境", (self.root / "views" / "shared.md").read_text(encoding="utf-8"))
 
+    def test_override_drops_the_original_detail(self) -> None:
+        write(
+            self.root,
+            "outbox/human.md",
+            """\
+- op_id: human#1
+  op: set
+  id: fact-a
+  scope: shared
+  base: none
+  at: 2026-10-12
+  text: 甲事实
+  detail: |
+    原始细节
+""",
+        )
+        write(
+            self.root,
+            "environments/Grok-demo-sync.md",
+            """\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: 2026-10-12
+override.fact-a: 覆盖句
+---
+
+路径：~/writing
+""",
+        )
+        compile_repo(self.root)
+        shared = (self.root / "views" / "shared.md").read_text(encoding="utf-8")
+        self.assertIn("甲事实", shared)
+        self.assertIn("原始细节", shared)
+        started = startup_read(self.root, "Grok-demo-sync")
+        self.assertIn("覆盖句", started)
+        self.assertNotIn("原始细节", started)
+        self.assertEqual((self.root / "views" / "shared.md").read_text(encoding="utf-8"), shared)
+
     def test_closes_leaves_one_head_and_clock_does_not_win(self) -> None:
         authority = parse_authority(AUTHORITY)
         left = parse_outbox(
@@ -325,6 +364,85 @@ override.fact-a: 覆盖句只在本环境
         twin_heads = twins[("shared", "pref-theme")].heads
         self.assertEqual(len(twin_heads), 2)
         self.assertCountEqual([head.text for head in twin_heads], ["裁决甲", "裁决乙"])
+
+    def test_sets_based_on_a_close_stay_on_the_chain(self) -> None:
+        authority = parse_authority(AUTHORITY)
+        grok = parse_outbox(
+            """\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: none
+  at: 2026-01-01
+  text: 深色方案
+""",
+            "Grok-demo-sync",
+        )
+        claude = parse_outbox(
+            """\
+- op_id: ClaudeCode-demo-sync#1
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: none
+  at: 2026-02-01
+  text: 浅色方案
+""",
+            "ClaudeCode-demo-sync",
+        )
+        human = parse_outbox(
+            """\
+- op_id: human#1
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  closes: [Grok-demo-sync#1, ClaudeCode-demo-sync#1]
+  at: 2026-03-01
+  text: 裁决句
+""",
+            "human",
+        )
+        continued = parse_outbox(
+            """\
+- op_id: Grok-demo-sync#2
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: human#1
+  at: 2020-01-01
+  text: 左续
+""",
+            "Grok-demo-sync",
+        )
+        alone, _ = compile_ops(grok + claude + human + continued, authority)
+        alone_heads = alone[("shared", "pref-theme")].heads
+        self.assertEqual(len(alone_heads), 1)
+        self.assertEqual(alone_heads[0].op_id, "Grok-demo-sync#2")
+        self.assertEqual(alone_heads[0].text, "左续")
+
+        sibling = parse_outbox(
+            """\
+- op_id: ClaudeCode-demo-sync#2
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: human#1
+  at: 2030-01-01
+  text: 右续
+""",
+            "ClaudeCode-demo-sync",
+        )
+        forked, _ = compile_ops(grok + claude + human + continued + sibling, authority)
+        fork_heads = forked[("shared", "pref-theme")].heads
+        self.assertEqual(len(fork_heads), 2)
+        self.assertCountEqual([head.text for head in fork_heads], ["左续", "右续"])
+        self.assertNotIn("human#1", [head.op_id for head in fork_heads])
 
     def test_identity_boundaries_and_card_owner(self) -> None:
         write(

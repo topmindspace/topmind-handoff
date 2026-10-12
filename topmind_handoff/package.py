@@ -137,6 +137,16 @@ def _known_ids(repo: Path) -> set[str]:
     return found
 
 
+def _safe_origin(origin: str) -> str:
+    """One path segment. Reject absolute paths and anything that can leave the repo."""
+    name = origin.strip()
+    if not name or name in {".", ".."} or any(mark in name for mark in ("/", "\\", "\x00")):
+        raise ValueError("origin_id 必须是单个路径段")
+    if Path(name).name != name:
+        raise ValueError("origin_id 必须是单个路径段")
+    return name
+
+
 def replay_package(repo: Path, package: str) -> list[str]:
     """Append appendix ops whose op_id is not already in the store, then compile if needed."""
     repo = Path(repo)
@@ -144,7 +154,11 @@ def replay_package(repo: Path, package: str) -> list[str]:
     version = front.get("handoff_version", "")
     if version.startswith("2"):
         raise ValueError(f"不支持的交接包大版本 {version}")
-    origin = front.get("origin_id") or "unknown"
+    origin = _safe_origin(front.get("origin_id") or "unknown")
+    outbox_dir = (repo / "outbox").resolve()
+    candidate = (outbox_dir / f"{origin}.md").resolve()
+    if candidate.parent != outbox_dir:
+        raise ValueError("origin_id 必须是单个路径段")
     incoming = _appendix_ops(package, origin)
     known = _known_ids(repo)
     added: list[str] = []

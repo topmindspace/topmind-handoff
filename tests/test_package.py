@@ -133,6 +133,41 @@ refreshed: 2026-10-12
         self.assertEqual(applied["claims"]["pref-keep"], "留下这条")
         self.assertEqual(applied["claims"]["pref-new"], "偏好深色")
 
+    def test_replay_rejects_origin_id_outside_the_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            repo = base / "repo"
+            repo.mkdir()
+            write(repo, "authority.md", AUTHORITY)
+            outside = base / "escaped.md"
+            origins = [str(base / "escaped"), "../escaped", "nested/escaped", "..\\escaped"]
+            before = {path for path in base.rglob("*") if path.is_file()}
+            for origin in origins:
+                package = "\n".join(
+                    [
+                        "---",
+                        'handoff_version: "1.1"',
+                        f"origin_id: {origin}",
+                        "---",
+                        "```ops",
+                        "- op_id: evil#1",
+                        "  op: set",
+                        "  id: fact-a",
+                        "  scope: shared",
+                        "  base: none",
+                        "  at: 2026-10-12",
+                        "  text: 越界",
+                        "```",
+                        "",
+                    ]
+                )
+                with self.assertRaises(ValueError):
+                    replay_package(repo, package)
+            after = {path for path in base.rglob("*") if path.is_file()}
+            self.assertEqual(before, after)
+            self.assertFalse(outside.exists())
+            self.assertFalse((repo / "outbox").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

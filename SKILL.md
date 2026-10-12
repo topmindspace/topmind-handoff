@@ -94,7 +94,7 @@ python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> -
 
 ### 这台以某场景为主
 
-用户指明场景后跑 `--own`。这只改 `authority.md` 里该场景的主人。身份和边界仍是 `human`。其他环境之后对这个场景只能提议。
+用户指明场景后跑 `--own`。它改该场景的主人并重新编译。身份和边界仍是 `human`。不再有权的句子离开场景视图，记成提议。
 
 ## 输出
 

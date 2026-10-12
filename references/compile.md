@@ -45,6 +45,8 @@ Git 合并若在 `views/` 或 `STATUS.md` 上冲突：两边的视图都丢掉�
 python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --origin <origin_id>
 ```
 
+改完主人后立刻重新编译。原先写进该场景、现在无权的 `set` 离开场景视图，记成提议。
+
 环境卡片只有该 `origin_id` 能整文件替换。卡片上的 `override.<id>` 只在这台的开工读取里盖住共享事实，不改 `views/shared.md`。
 
 ## 操作
@@ -73,12 +75,13 @@ python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --orig
 
 同一条主张上，`base` 相同的两条 `set` 都留下，视图写「未裁决」，谁的日期更晚都一样。不同 id 互不影响。
 `closes` 只盖住一部分链头时不生效，原来的链头还在。两条 `closes` 都刚好等于当前链头时，两条都留下，仍是未裁决。
+裁决成为链头之后，后继 `set` 用它做 `base`。一条后继就是新链头。两条后继用同一个 `base`，再次未裁决。
 
 ## 开工时读什么
 
 只读四样：共享视图、本环境卡片 `role` 对应的那一个场景、该环境卡片、与本环境有关的冲突。
 `scope: origin:<本环境>` 里已经生效的条目只附在这次开工读取，不进共享视图和场景视图。别的环境写这个范围，只记成提议。
-其他场景和其他环境的任务不放进这次上下文。本环境覆盖项只存在于这次投影里。
+其他场景和其他环境的任务不放进这次上下文。本环境覆盖项只存在于这次投影里，并且不再带上原来的长说明。
 
 ## 整理
 
@@ -88,7 +91,7 @@ python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --orig
 python3 scripts/compile_memory.py --organize <记忆目录> --today YYYY-MM-DD
 ```
 
-- 事实索引压到约 200 行或 25KB 以内。长说明移到 `facts/`，索引留一行。
+- 事实索引压到约 200 行或 25KB 以内。长说明移到 `facts/`，索引留一行。收起某一类时，没有长说明的短行也写进同一个 `facts/` 文件。
 - 身份和边界满 180 天、偏好满 90 天、项目状态满 30 天，标「未复核」。未复核仍然有效。
 - 环境卡片的 `refreshed` 满 90 天，标「未刷新」，文件保留。
 - 信箱不改写。不折叠历史，除非用户另说一句要归档。
