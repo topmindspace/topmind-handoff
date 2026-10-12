@@ -141,8 +141,11 @@ def _known_ids(repo: Path) -> set[str]:
     return found
 
 
-def replay_package(repo: Path, package: str) -> list[str]:
-    """Append appendix ops whose op_id is not already in the store, then compile if needed."""
+def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list[str]:
+    """List appendix ops this repo does not have. Write them only after confirmation.
+
+    Existing outbox lines, other origins, and environment cards are left as they are.
+    """
     repo = Path(repo)
     front = _front(package)
     version = front.get("handoff_version", "")
@@ -160,13 +163,14 @@ def replay_package(repo: Path, package: str) -> list[str]:
         known.add(op.op_id)
         added.append(op.op_id)
         blocks.append(op.raw.rstrip("\n"))
-    if blocks:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        existing = dest.read_text(encoding="utf-8") if dest.is_file() else f"# outbox {origin}\n"
-        if not existing.endswith("\n"):
-            existing += "\n"
-        dest.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
-        compile_repo(repo)
+    if not blocks or not confirmed:
+        return added
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    existing = dest.read_text(encoding="utf-8") if dest.is_file() else f"# outbox {origin}\n"
+    if not existing.endswith("\n"):
+        existing += "\n"
+    dest.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
+    compile_repo(repo)
     return added
 
 
@@ -174,6 +178,9 @@ def replay_package(repo: Path, package: str) -> list[str]:
 class LegacyPlan:
     additions: dict[str, str] = field(default_factory=dict)
     anchor_conflicts: dict[str, tuple[str, str]] = field(default_factory=dict)
+    anchor_fills: dict[str, str] = field(default_factory=dict)
+    text_conflicts: dict[str, tuple[str, str]] = field(default_factory=dict)
+    unkeyed: list[str] = field(default_factory=list)
     suggested_deletions: list[str] = field(default_factory=list)
     omitted_local_ids: list[str] = field(default_factory=list)
     mode: str = "migration"
@@ -183,11 +190,21 @@ _SECTION_6 = re.compile(r"^##\s*6(?:\.|\s|$)")
 
 
 def _claim_items(package: str) -> list[tuple[str | None, str]]:
-    """List items outside legacy section 6. That section is a behavior constraint, not memory."""
+    """List items outside legacy section 6 and outside fenced blocks.
+
+    Section 6 is a behavior constraint, not memory. Fenced blocks hold the
+    operations appendix, which is a ledger and not a new claim.
+    """
     items: list[tuple[str | None, str]] = []
     skip = False
+    fenced = False
     for line in package.splitlines():
         stripped = line.strip()
+        if stripped.startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
         if stripped.startswith("##"):
             skip = _SECTION_6.match(stripped) is not None
             continue
@@ -203,11 +220,13 @@ def _claim_items(package: str) -> list[tuple[str | None, str]]:
 
 
 def _anchor_of(text: str) -> tuple[str, str] | None:
+    """An anchor line starts with the field name. A later mention is not an anchor."""
+    stripped = text.strip()
     for field_name in ANCHOR_FIELDS:
         for separator in ("：", ":"):
             needle = field_name + separator
-            if needle in text:
-                return field_name, text.split(needle, 1)[1].strip()
+            if stripped.startswith(needle):
+                return field_name, stripped[len(needle) :].strip()
     return None
 
 
@@ -227,22 +246,52 @@ def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
     local_claims = dict(local.get("claims") or {})
     plan = LegacyPlan(mode=mode)
     seen: set[str] = set()
+    local_texts = {value for value in local_claims.values() if value}
     for claim_id, text in _claim_items(package):
         anchor = _anchor_of(text)
         if anchor:
+            if _is_tombstone(text):
+                continue
             kind, value = anchor
             current = local_anchors.get(kind, "")
             if current and current != value:
                 plan.anchor_conflicts[kind] = (current, value)
+                plan.anchor_fills.pop(kind, None)
+            elif not current and value:
+                filled = plan.anchor_fills.get(kind)
+                if filled is not None and filled != value:
+                    plan.anchor_conflicts[kind] = (filled, value)
+                    plan.anchor_fills.pop(kind, None)
+                elif kind not in plan.anchor_conflicts:
+                    plan.anchor_fills[kind] = value
             continue
-        if claim_id:
-            seen.add(claim_id)
+        if not claim_id:
+            if text and text not in local_texts and text not in plan.unkeyed:
+                plan.unkeyed.append(text)
+            continue
+        seen.add(claim_id)
         if _is_tombstone(text):
-            if claim_id:
+            if claim_id not in plan.suggested_deletions:
                 plan.suggested_deletions.append(claim_id)
+            previous = plan.additions.pop(claim_id, None)
+            if previous is not None:
+                plan.text_conflicts[claim_id] = (previous, text)
             continue
-        if claim_id and claim_id not in local_claims:
-            plan.additions[claim_id] = text
+        if claim_id in plan.suggested_deletions or claim_id in plan.text_conflicts:
+            plan.additions.pop(claim_id, None)
+            plan.text_conflicts.setdefault(claim_id, (local_claims.get(claim_id, ""), text))
+            continue
+        current = local_claims.get(claim_id)
+        if current is None:
+            previous = plan.additions.get(claim_id)
+            if previous is None:
+                plan.additions[claim_id] = text
+            elif previous != text:
+                plan.text_conflicts[claim_id] = (previous, text)
+                del plan.additions[claim_id]
+            continue
+        if current != text:
+            plan.text_conflicts[claim_id] = (current, text)
     for claim_id in local_claims:
         if claim_id not in seen:
             plan.omitted_local_ids.append(claim_id)
@@ -252,12 +301,19 @@ def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
 
 
 def apply_legacy_plan(plan: LegacyPlan, local: dict, *, confirmed: bool) -> dict:
-    """Write only confirmed non-anchor additions. Never delete, never overwrite anchors."""
+    """Add confirmed new claims and empty anchors. Never delete or replace existing text."""
     result = deepcopy(local)
     result.setdefault("anchors", {})
     result.setdefault("claims", {})
     if not confirmed:
         return result
+    blocked = set(plan.text_conflicts) | set(plan.suggested_deletions)
     for claim_id, text in plan.additions.items():
+        if claim_id in result["claims"] or claim_id in blocked:
+            continue
         result["claims"][claim_id] = text
+    for kind, value in plan.anchor_fills.items():
+        if result["anchors"].get(kind, "") or kind in plan.anchor_conflicts:
+            continue
+        result["anchors"][kind] = value
     return result
