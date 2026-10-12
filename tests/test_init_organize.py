@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from topmind_handoff.admin import PublicRepoRefused, init_memory_repo, organize_repo, set_scenario_owner  # noqa: E402
 from topmind_handoff.model import parse_authority  # noqa: E402
-from topmind_handoff.compile import compile_repo, status_is_valid  # noqa: E402
+from topmind_handoff.compile import compile_repo, startup_read, status_is_valid  # noqa: E402
 
 
 def write(root: Path, rel: str, text: str) -> None:
@@ -310,6 +310,99 @@ refreshed: {fresh}
             self.assertEqual(owners["scenario.writing"], "Grok-demo-sync")
             self.assertEqual(owners["shared.identity"], "human")
             self.assertEqual(owners["shared.boundaries"], "human")
+
+    def test_startup_override_matches_a_review_suffix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            today = date(2026, 10, 12)
+            write(
+                root,
+                "authority.md",
+                """\
+- scope: shared.identity
+  owner: human
+- scope: shared.boundaries
+  owner: human
+""",
+            )
+            write(
+                root,
+                "outbox/Grok-demo-sync.md",
+                f"""\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: none
+  at: {(today - timedelta(days=90)).isoformat()}
+  text: 深色方案
+  detail: |
+    原始细节
+""",
+            )
+            write(
+                root,
+                "environments/Grok-demo-sync.md",
+                f"""\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: {today.isoformat()}
+override.pref-theme: 覆盖句
+---
+
+路径：~/writing
+""",
+            )
+            organize_repo(root, today)
+            shared = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertIn("- 深色方案 {id:pref-theme} （未复核）", shared)
+            archived = (root / "facts" / "shared-preference.md").read_text(encoding="utf-8")
+            self.assertIn("原始细节", archived)
+            started = startup_read(root, "Grok-demo-sync")
+            self.assertIn("- 覆盖句 {id:pref-theme}", started)
+            self.assertNotIn("深色方案", started)
+            self.assertNotIn("原始细节", started)
+            self.assertEqual((root / "views" / "shared.md").read_text(encoding="utf-8"), shared)
+
+    def test_init_rejects_origin_outside_the_repo(self) -> None:
+        script = ROOT / "scripts" / "compile_memory.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            origins = [str(base / "escaped"), "../evil", "nested/evil"]
+            for index, origin in enumerate(origins):
+                repo = base / f"repo-{index}"
+                outside = base / "escaped.md"
+                proc = subprocess.run(
+                    [sys.executable, str(script), "--init", str(repo), "--private", "--origin", origin],
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertFalse(repo.exists())
+                self.assertFalse(outside.exists())
+                self.assertFalse((repo / "evil.md").exists())
+                self.assertEqual(list(base.rglob("*.md")), [])
+            role_repo = base / "role-repo"
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--init",
+                    str(role_repo),
+                    "--private",
+                    "--origin",
+                    "Grok-demo-sync",
+                    "--role",
+                    "../evil",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertFalse(role_repo.exists())
+            self.assertFalse((base / "evil.md").exists())
 
 
 if __name__ == "__main__":

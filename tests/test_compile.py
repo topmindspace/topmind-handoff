@@ -506,6 +506,40 @@ override.fact-a: 覆盖句
         self.assertTrue(card.is_file())
         self.assertFalse((self.root / "environments" / "ClaudeCode-demo-sync.md").exists())
 
+    def test_save_environment_card_rejects_origin_outside_the_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            repo = base / "repo"
+            repo.mkdir()
+            outside = base / "escaped.md"
+            before = {path for path in base.rglob("*") if path.is_file()}
+            for origin in (str(base / "escaped"), "../evil", "nested/evil"):
+                with self.assertRaises(ValueError):
+                    save_environment_card(repo, origin, origin, "---\norigin: x\n---\n")
+            after = {path for path in base.rglob("*") if path.is_file()}
+            self.assertEqual(before, after)
+            self.assertFalse(outside.exists())
+            self.assertFalse((repo / "evil.md").exists())
+
+    def test_hostile_scenario_name_is_not_written_outside_the_repo(self) -> None:
+        write(
+            self.root,
+            "environments/Grok-demo-sync.md",
+            """\
+---
+origin: Grok-demo-sync
+role: ../evil
+refreshed: 2026-10-12
+---
+
+路径：~/writing
+""",
+        )
+        compile_repo(self.root)
+        self.assertFalse((self.root / "evil.md").exists())
+        self.assertFalse((self.root.parent / "evil.md").exists())
+        self.assertTrue((self.root / "views" / "shared.md").is_file())
+
     def test_mismatched_status_is_invalid(self) -> None:
         write(
             self.root,

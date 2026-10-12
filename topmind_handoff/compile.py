@@ -13,7 +13,9 @@ from topmind_handoff.model import (
     Op,
     compile_ops,
     compiler_version,
+    origin_markdown,
     parse_authority,
+    scenario_filename,
     parse_card,
     parse_outbox,
     scenario_names,
@@ -104,9 +106,12 @@ def render_views(compiled: Compiled, *, inline_detail: bool = True) -> dict[str,
     rendered = {"shared.md": render_scope_view("共享", shared, inline_detail=inline_detail)}
     names = scenario_names(compiled.authority, compiled.cards, _all_ops(compiled))
     for name in names:
+        filename = scenario_filename(name)
+        if filename is None:
+            continue
         scope = f"scenario:{name}"
         results = [result for (item_scope, _cid), result in compiled.claims.items() if item_scope == scope]
-        rendered[f"scenario-{name}.md"] = render_scope_view(f"场景：{name}", results, inline_detail=inline_detail)
+        rendered[filename] = render_scope_view(f"场景：{name}", results, inline_detail=inline_detail)
     return rendered
 
 
@@ -234,23 +239,25 @@ def status_is_valid(repo: Path) -> tuple[bool, str]:
 
 def save_environment_card(repo: Path, actor: str, origin: str, content: str) -> Path:
     """Replace one origin's environment card. Other origins are refused."""
+    dest = origin_markdown(Path(repo) / "environments", origin)
+    origin = dest.name[: -len(".md")]
     if actor != origin:
         raise PermissionError(f"{actor} 只能替换自己的环境卡片 {origin}")
-    dest = Path(repo) / "environments" / f"{origin}.md"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(_ensure_nl(content), encoding="utf-8")
     return dest
 
 
+_FACT_LINE = re.compile(r"^- (?P<body>.*)\{id:(?P<cid>[^}]+)\}(?P<suffix>\s*（未复核）)?\s*$")
+
+
 def _override_line(line: str, overrides: dict[str, str]) -> str | None:
-    if not line.startswith("- "):
+    match = _FACT_LINE.match(line.rstrip())
+    if not match or match.group("cid") not in overrides:
         return None
-    stripped = line.rstrip()
-    for claim_id, text in overrides.items():
-        marker = "{id:" + claim_id + "}"
-        if stripped.endswith(marker):
-            return f"- {text} {marker}"
-    return None
+    claim_id = match.group("cid")
+    suffix = match.group("suffix") or ""
+    return f"- {overrides[claim_id]} {{id:{claim_id}}}{suffix}"
 
 
 def _is_detail_line(line: str) -> bool:

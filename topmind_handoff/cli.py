@@ -71,7 +71,7 @@ def _init(argv: list[str]) -> int:
             role=args.role,
             today=args.today,
         )
-    except PublicRepoRefused as exc:
+    except (PublicRepoRefused, ValueError) as exc:
         print(str(exc))
         return 1
     print(f"initialized {args.path}")
@@ -95,7 +95,11 @@ def _render(argv: list[str]) -> int:
     parser.add_argument("--origin", required=True)
     parser.add_argument("--out")
     args = parser.parse_args(argv)
-    text = render_package(Path(args.path), args.origin)
+    try:
+        text = render_package(Path(args.path), args.origin)
+    except ValueError as exc:
+        print(str(exc))
+        return 1
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")
         print(args.out)

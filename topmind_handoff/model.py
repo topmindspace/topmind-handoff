@@ -31,6 +31,35 @@ def compiler_version() -> str:
     return str(pkg["version"])
 
 
+def safe_origin(origin: str) -> str:
+    """One path segment. Reject absolute paths and any name that can leave the repo."""
+    name = origin.strip()
+    if not name or name in {".", ".."} or any(mark in name for mark in ("/", "\\", "\x00")):
+        raise ValueError("origin_id 必须是单个路径段")
+    if Path(name).name != name:
+        raise ValueError("origin_id 必须是单个路径段")
+    return name
+
+
+def scenario_filename(name: str) -> str | None:
+    """`scenario-<name>.md` when the name is one path segment. Otherwise None."""
+    try:
+        safe_origin(name)
+    except ValueError:
+        return None
+    return f"scenario-{name}.md"
+
+
+def origin_markdown(directory: Path, origin: str) -> Path:
+    """Path of `<directory>/<origin>.md` after the single-segment check."""
+    name = safe_origin(origin)
+    directory = Path(directory)
+    candidate = directory / f"{name}.md"
+    if candidate.resolve().parent != directory.resolve():
+        raise ValueError("origin_id 必须是单个路径段")
+    return candidate
+
+
 @dataclass(frozen=True)
 class Op:
     op_id: str

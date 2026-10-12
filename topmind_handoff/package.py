@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from topmind_handoff.compile import compile_repo
-from topmind_handoff.model import ROOT, compiler_version, parse_outbox
+from topmind_handoff.model import ROOT, compiler_version, origin_markdown, parse_outbox, safe_origin, scenario_filename
 
 APPENDIX_MARK = "本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。"
 ANCHOR_FIELDS = ("对本智能体的称呼", "称呼", "语言", "时区")
@@ -40,14 +40,18 @@ def _front(text: str) -> dict[str, str]:
 def render_package(repo: Path, origin: str) -> str:
     """Compile, then render an offline 1.1 package from the views and this origin's outbox."""
     repo = Path(repo)
+    origin = safe_origin(origin)
     compile_repo(repo)
     shared = (repo / "views" / "shared.md").read_text(encoding="utf-8")
-    card_path = repo / "environments" / f"{origin}.md"
+    card_path = origin_markdown(repo / "environments", origin)
     card = card_path.read_text(encoding="utf-8") if card_path.is_file() else "（无）\n"
     role = _front(card).get("role", "")
-    scenario_path = repo / "views" / f"scenario-{role}.md" if role else None
+    filename = scenario_filename(role) if role else None
+    scenario_path = repo / "views" / filename if filename else None
+    if scenario_path is not None and scenario_path.resolve().parent != (repo / "views").resolve():
+        scenario_path = None
     scenario = scenario_path.read_text(encoding="utf-8") if scenario_path and scenario_path.is_file() else "（无）\n"
-    outbox_path = repo / "outbox" / f"{origin}.md"
+    outbox_path = origin_markdown(repo / "outbox", origin)
     ops_text = outbox_path.read_text(encoding="utf-8") if outbox_path.is_file() else ""
     op_blocks = [op.raw.rstrip("\n") for op in parse_outbox(ops_text, origin)]
     ops_body = "\n\n".join(op_blocks) if op_blocks else "（无）"
@@ -137,16 +141,6 @@ def _known_ids(repo: Path) -> set[str]:
     return found
 
 
-def _safe_origin(origin: str) -> str:
-    """One path segment. Reject absolute paths and anything that can leave the repo."""
-    name = origin.strip()
-    if not name or name in {".", ".."} or any(mark in name for mark in ("/", "\\", "\x00")):
-        raise ValueError("origin_id 必须是单个路径段")
-    if Path(name).name != name:
-        raise ValueError("origin_id 必须是单个路径段")
-    return name
-
-
 def replay_package(repo: Path, package: str) -> list[str]:
     """Append appendix ops whose op_id is not already in the store, then compile if needed."""
     repo = Path(repo)
@@ -154,11 +148,8 @@ def replay_package(repo: Path, package: str) -> list[str]:
     version = front.get("handoff_version", "")
     if version.startswith("2"):
         raise ValueError(f"不支持的交接包大版本 {version}")
-    origin = _safe_origin(front.get("origin_id") or "unknown")
-    outbox_dir = (repo / "outbox").resolve()
-    candidate = (outbox_dir / f"{origin}.md").resolve()
-    if candidate.parent != outbox_dir:
-        raise ValueError("origin_id 必须是单个路径段")
+    origin = safe_origin(front.get("origin_id") or "unknown")
+    dest = origin_markdown(repo / "outbox", origin)
     incoming = _appendix_ops(package, origin)
     known = _known_ids(repo)
     added: list[str] = []
@@ -170,13 +161,11 @@ def replay_package(repo: Path, package: str) -> list[str]:
         added.append(op.op_id)
         blocks.append(op.raw.rstrip("\n"))
     if blocks:
-        outbox = repo / "outbox"
-        outbox.mkdir(parents=True, exist_ok=True)
-        path = outbox / f"{origin}.md"
-        existing = path.read_text(encoding="utf-8") if path.is_file() else f"# outbox {origin}\n"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        existing = dest.read_text(encoding="utf-8") if dest.is_file() else f"# outbox {origin}\n"
         if not existing.endswith("\n"):
             existing += "\n"
-        path.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
+        dest.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
         compile_repo(repo)
     return added
 

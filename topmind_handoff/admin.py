@@ -16,7 +16,10 @@ from topmind_handoff.model import (
     ClaimResult,
     Compiled,
     Op,
+    origin_markdown,
     parse_authority,
+    safe_origin,
+    scenario_filename,
     scenario_names,
 )
 
@@ -43,6 +46,8 @@ def init_memory_repo(
     """
     if not private:
         raise PublicRepoRefused("公开仓库拒绝")
+    origin = safe_origin(origin)
+    role = safe_origin(role)
     path = Path(path)
     if path.exists() and any(path.iterdir()):
         raise FileExistsError(f"{path} 不是空目录")
@@ -81,10 +86,10 @@ def init_memory_repo(
     )
     outbox = path / "outbox"
     outbox.mkdir()
-    (outbox / f"{origin}.md").write_text(_nl(f"# outbox {origin}\n"), encoding="utf-8")
+    origin_markdown(outbox, origin).write_text(_nl(f"# outbox {origin}\n"), encoding="utf-8")
     environments = path / "environments"
     environments.mkdir()
-    (environments / f"{origin}.md").write_text(
+    origin_markdown(environments, origin).write_text(
         _nl(
             "\n".join(
                 [
@@ -304,11 +309,15 @@ def organize_repo(repo: Path, today: date | None = None) -> Compiled:
         known_ops.extend(result.heads)
         known_ops.extend(result.unapplied)
     names = scenario_names(compiled.authority, compiled.cards, known_ops)
-    keep = {f"scenario-{name}.md" for name in names}
+    keep: set[str] = set()
     for name in names:
+        filename = scenario_filename(name)
+        if filename is None:
+            continue
+        keep.add(filename)
         scope = f"scenario:{name}"
         text = _compact_scope(f"场景：{name}", _results_for(compiled, scope), today, facts_root, f"scenario-{name}")
-        (views / f"scenario-{name}.md").write_text(text, encoding="utf-8")
+        (views / filename).write_text(text, encoding="utf-8")
     for path in views.glob("scenario-*.md"):
         if path.name not in keep:
             path.unlink()

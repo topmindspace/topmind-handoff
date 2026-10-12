@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -167,6 +168,29 @@ refreshed: 2026-10-12
             self.assertEqual(before, after)
             self.assertFalse(outside.exists())
             self.assertFalse((repo / "outbox").exists())
+
+    def test_render_rejects_origin_outside_the_repo(self) -> None:
+        script = ROOT / "scripts" / "compile_memory.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            repo = base / "repo"
+            repo.mkdir()
+            write(repo, "authority.md", AUTHORITY)
+            outside = base / "escaped.md"
+            before = {path for path in base.rglob("*") if path.is_file()}
+            for origin in (str(base / "escaped"), "../evil", "nested/evil"):
+                with self.assertRaises(ValueError):
+                    render_package(repo, origin)
+            proc = subprocess.run(
+                [sys.executable, str(script), "--render", str(repo), "--origin", "../evil"],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            after = {path for path in base.rglob("*") if path.is_file()}
+            self.assertEqual(before, after)
+            self.assertFalse(outside.exists())
+            self.assertFalse((repo / "evil.md").exists())
 
 
 if __name__ == "__main__":
