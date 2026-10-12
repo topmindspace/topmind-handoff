@@ -1,4 +1,4 @@
-"""Offline package render and legacy 1.1 import use the shipped entry points."""
+"""Offline package render and host receive use the shipped entry points."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ sys.path.insert(0, str(ROOT))
 
 from topmind_handoff.package import (  # noqa: E402
     APPENDIX_MARK,
+    PACKAGE_VERSION,
     LegacyPlan,
     apply_legacy_plan,
     legacy_import_plan,
-    render_legacy_package,
     render_package,
     replay_package,
 )
@@ -37,6 +37,22 @@ def write(root: Path, rel: str, text: str) -> None:
     if not text.endswith("\n"):
         text += "\n"
     path.write_text(text, encoding="utf-8")
+
+
+def _view_package(claims: list[dict[str, str]]) -> str:
+    grouped: dict[str, list[str]] = {}
+    for claim in claims:
+        section = claim.get("section") or "5. 事实与记忆（Facts & memories）"
+        body = claim["text"]
+        if claim.get("id"):
+            body += f" {{id:{claim['id']}}}"
+        grouped.setdefault(section, []).append(f"- {body}")
+    lines = ["---", f'handoff_version: "{PACKAGE_VERSION}"', "---", ""]
+    for section, items in grouped.items():
+        lines.append(f"## {section}")
+        lines.extend(items)
+        lines.append("")
+    return "\n".join(lines)
 
 
 class PackageTests(unittest.TestCase):
@@ -71,7 +87,7 @@ refreshed: 2026-10-12
 """,
             )
             package = render_package(root, "Grok-demo-sync")
-            self.assertIn('handoff_version: "1.1"', package)
+            self.assertIn(f'handoff_version: "{PACKAGE_VERSION}"', package)
             self.assertIn("甲事实", package)
             self.assertIn("卡片标记甲", package)
             self.assertIn("Grok-demo-sync#1", package)
@@ -99,76 +115,59 @@ refreshed: 2026-10-12
                 self.assertEqual((dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"), outbox)
                 self.assertEqual((dest / "views" / "shared.md").read_text(encoding="utf-8"), view)
 
-    def test_legacy_import_confirms_and_ignores_mode(self) -> None:
+    def test_package_without_appendix_stops(self) -> None:
         claims = [
             {"section": "1. 这个人是谁（Identity）", "text": "称呼：张三", "id": "anchor-name"},
-            {"section": "1. 这个人是谁（Identity）", "text": "语言：zh-CN", "id": "anchor-lang"},
-            {"section": "1. 这个人是谁（Identity）", "text": "时区：Asia/Shanghai", "id": "anchor-tz"},
-            {"section": "2. 怎么跟他说话（Communication）", "text": "对本智能体的称呼：助手", "id": "anchor-agent"},
             {"section": "5. 事实与记忆（Facts & memories）", "text": "偏好深色", "id": "pref-new"},
-            {"section": "5. 事实与记忆（Facts & memories）", "text": "已撤回：不再把默认编辑器记为 Vim", "id": "pref-vim"},
+            {"section": "5. 事实与记忆（Facts & memories）", "text": "全程中文", "id": "pref-zh"},
+            {"section": "边界", "text": "不携带记账明细", "id": "boundaries.ledger"},
         ]
-        migration = render_legacy_package(claims, mode="migration")
-        sync = render_legacy_package(claims, mode="sync")
-        for package in (migration, sync):
-            self.assertIn('handoff_version: "1.1"', package)
-            self.assertNotIn("## 10. 操作附录", package)
-            self.assertNotIn("```ops", package)
-        local = {
-            "anchors": {
-                "称呼": "张三",
-                "语言": "zh-CN",
-                "时区": "UTC",
-                "对本智能体的称呼": "助手",
-            },
-            "claims": {"pref-vim": "默认编辑器 Vim", "pref-keep": "留下这条"},
-        }
-        plan_m = legacy_import_plan(migration, local)
-        plan_s = legacy_import_plan(sync, local)
-        self.assertEqual(plan_m.additions, plan_s.additions)
-        self.assertEqual(plan_m.suggested_deletions, plan_s.suggested_deletions)
-        self.assertEqual(plan_m.omitted_local_ids, plan_s.omitted_local_ids)
-        self.assertIn("pref-vim", plan_m.suggested_deletions)
-        self.assertIn("pref-keep", plan_m.omitted_local_ids)
-        self.assertIn("pref-new", plan_m.additions)
-        self.assertIn("时区", plan_m.anchor_conflicts)
-        self.assertEqual(plan_m.anchor_fills, {})
-        self.assertEqual(plan_m.text_conflicts, {})
-        self.assertEqual(plan_m.unkeyed, [])
-
-        untouched = apply_legacy_plan(plan_m, local, confirmed=False)
-        self.assertEqual(untouched, local)
-        applied = apply_legacy_plan(plan_m, local, confirmed=True)
-        self.assertEqual(applied["anchors"]["时区"], "UTC")
-        self.assertEqual(applied["anchors"]["称呼"], "张三")
-        self.assertEqual(applied["claims"]["pref-vim"], "默认编辑器 Vim")
-        self.assertEqual(applied["claims"]["pref-keep"], "留下这条")
-        self.assertEqual(applied["claims"]["pref-new"], "偏好深色")
+        package = _view_package(claims)
+        self.assertIn(f'handoff_version: "{PACKAGE_VERSION}"', package)
+        self.assertNotIn("```ops", package)
+        local = {"anchors": {"称呼": "李四"}, "claims": {"pref-keep": "留下这条"}}
+        with self.assertRaises(ValueError) as raised:
+            legacy_import_plan(package, local)
+        self.assertIn("没有操作附录", str(raised.exception))
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            write(dest, "authority.md", AUTHORITY)
+            existing = "# outbox Grok-demo-sync\n"
+            write(dest, "outbox/Grok-demo-sync.md", existing)
+            with self.assertRaises(ValueError) as replay_raised:
+                replay_package(dest, package, confirmed=True)
+            self.assertIn("没有操作附录", str(replay_raised.exception))
+            self.assertEqual((dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"), existing)
+            self.assertFalse((dest / "views").exists())
+            self.assertNotIn("pref-zh", (dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"))
+            self.assertNotIn("boundaries.ledger", (dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"))
 
     def test_legacy_section_6_is_not_stored_as_a_fact(self) -> None:
-        package = """\
+        package = f"""\
 ---
-handoff_version: "1.1"
-mode: migration
+handoff_version: "{PACKAGE_VERSION}"
 ---
 
 ## 5. 事实与记忆（Facts & memories）
 
-- 偏好深色 {id:pref-new}
-- 已撤回：旧偏好 {id:pref-old}
+- 偏好深色 {{id:pref-new}}
+- 已撤回：旧偏好 {{id:pref-old}}
 
 ## 6. 边界（Boundaries）
 
-- 不携带记账明细 {id:boundaries.ledger}
-- 已撤回：旧边界 {id:boundaries.old}
+- 不携带记账明细 {{id:boundaries.ledger}}
+- 已撤回：旧边界 {{id:boundaries.old}}
 
 ## 边界
 
-- 人类写下的边界 {id:boundaries.human}
+- 人类写下的边界 {{id:boundaries.human}}
 
 ## 7. 其他
 
-- 另一事实 {id:fact-next}
+- 另一事实 {{id:fact-next}}
+
+```ops
+```
 """
         local = {"anchors": {}, "claims": {"pref-keep": "留下这条", "boundaries.old": "本地旧边界"}}
         plan = legacy_import_plan(package, local)
@@ -178,7 +177,8 @@ mode: migration
         self.assertNotIn("boundaries.old", plan.suggested_deletions)
         self.assertIn("pref-new", plan.additions)
         self.assertEqual(plan.additions["pref-new"], "偏好深色")
-        self.assertIn("boundaries.human", plan.additions)
+        self.assertNotIn("boundaries.human", plan.additions)
+        self.assertNotIn("不携带记账明细", " ".join(plan.additions.values()))
         self.assertIn("fact-next", plan.additions)
         self.assertIn("pref-old", plan.suggested_deletions)
         self.assertIn("boundaries.old", plan.omitted_local_ids)
@@ -186,7 +186,7 @@ mode: migration
         self.assertNotIn("boundaries.ledger", applied["claims"])
         self.assertNotIn("不携带记账明细", " ".join(applied["claims"].values()))
         self.assertEqual(applied["claims"]["pref-new"], "偏好深色")
-        self.assertEqual(applied["claims"]["boundaries.human"], "人类写下的边界")
+        self.assertNotIn("boundaries.human", applied["claims"])
         self.assertEqual(applied["claims"]["boundaries.old"], "本地旧边界")
         self.assertEqual(applied["claims"]["pref-keep"], "留下这条")
 
@@ -205,7 +205,7 @@ mode: migration
             {"section": "5. 事实与记忆（Facts & memories）", "text": "不喜欢被称呼：老板"},
             {"section": "5. 事实与记忆（Facts & memories）", "text": "已撤回：不再使用 Vim", "id": "pref-vim"},
         ]
-        package = render_legacy_package(claims)
+        package = _view_package(claims)
         package += "\n```ops\n- 秘密事实 {id:fact-secret}\n- op_id: Grok-demo-sync#9\n```\n"
         local = {
             "anchors": {"称呼": "李四", "语言": "", "时区": "", "对本智能体的称呼": ""},
@@ -249,12 +249,12 @@ mode: migration
         self.assertNotIn("喜欢步行", applied["claims"].values())
         self.assertNotIn("秘密事实", " ".join(applied["claims"].values()))
 
-        split = render_legacy_package(
+        split = _view_package(
             [
                 {"text": "时区：Asia/Shanghai", "id": "tz-a"},
                 {"text": "时区：UTC", "id": "tz-b"},
             ]
-        )
+        ) + "\n```ops\n```\n"
         split_plan = legacy_import_plan(split, {"anchors": {"时区": ""}, "claims": {}})
         self.assertNotIn("时区", split_plan.anchor_fills)
         self.assertEqual(split_plan.anchor_conflicts["时区"], ("Asia/Shanghai", "UTC"))
@@ -327,9 +327,9 @@ refreshed: 2026-10-12
             write(dest, "outbox/Other-demo.md", other)
             write(dest, "environments/Grok-demo-sync.md", card)
             write(dest, "views/shared.md", "本地视图标记\n")
-            package = """\
+            package = f"""\
 ---
-handoff_version: "1.1"
+handoff_version: "{PACKAGE_VERSION}"
 origin_id: Grok-demo-sync
 ---
 
@@ -386,7 +386,7 @@ origin_id: Grok-demo-sync
                 package = "\n".join(
                     [
                         "---",
-                        'handoff_version: "1.1"',
+                        f'handoff_version: "{PACKAGE_VERSION}"',
                         f"origin_id: {origin}",
                         "---",
                         "```ops",
@@ -430,6 +430,91 @@ origin_id: Grok-demo-sync
             self.assertEqual(before, after)
             self.assertFalse(outside.exists())
             self.assertFalse((repo / "evil.md").exists())
+
+    def test_other_package_version_writes_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            write(dest, "authority.md", AUTHORITY)
+            existing = "# outbox Grok-demo-sync\n"
+            write(dest, "outbox/Grok-demo-sync.md", existing)
+            other = "1" if PACKAGE_VERSION == "1" else "1.1"
+            package = f"""\
+---
+handoff_version: "{other}"
+origin_id: Grok-demo-sync
+---
+
+```ops
+- op_id: Grok-demo-sync#9
+  op: set
+  id: fact-z
+  scope: shared
+  base: none
+  at: 2026-10-13
+  text: 不该写入
+```
+"""
+            with self.assertRaises(ValueError):
+                replay_package(dest, package, confirmed=True)
+            self.assertEqual((dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"), existing)
+            self.assertFalse((dest / "views").exists())
+
+    def test_rendered_boundary_slice_is_not_a_fact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "authority.md", AUTHORITY)
+            write(
+                root,
+                "outbox/human.md",
+                """\
+- op_id: human#1
+  op: set
+  id: boundaries.ledger
+  scope: shared
+  slice: boundaries
+  base: none
+  at: 2026-10-13
+  text: 不携带记账明细
+""",
+            )
+            write(
+                root,
+                "outbox/Grok-demo-sync.md",
+                """\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: pref-zh
+  scope: shared
+  slice: preference
+  base: none
+  at: 2026-10-13
+  text: 全程中文
+""",
+            )
+            write(
+                root,
+                "environments/Grok-demo-sync.md",
+                """\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: 2026-10-13
+---
+
+卡片
+""",
+            )
+            package = render_package(root, "Grok-demo-sync")
+            self.assertIn("## 边界", package)
+            self.assertIn("```ops", package)
+            local = {"anchors": {}, "claims": {}}
+            plan = legacy_import_plan(package, local)
+            self.assertNotIn("boundaries.ledger", plan.additions)
+            self.assertNotIn("不携带记账明细", " ".join(plan.additions.values()))
+            self.assertEqual(plan.additions.get("pref-zh"), "全程中文")
+            applied = apply_legacy_plan(plan, local, confirmed=True)
+            self.assertNotIn("boundaries.ledger", applied["claims"])
+            self.assertEqual(applied["claims"].get("pref-zh"), "全程中文")
 
 
 if __name__ == "__main__":

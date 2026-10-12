@@ -1,4 +1,4 @@
-"""Render a handoff package and apply a legacy 1.1 import. Same compiler, no network."""
+"""Render one handoff package and replay its ledger. Same compiler, no network."""
 
 from __future__ import annotations
 
@@ -7,11 +7,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from topmind_handoff.compile import compile_repo
+from topmind_handoff.compile import append_outbox, compile_repo
 from topmind_handoff.model import ROOT, compiler_version, origin_markdown, parse_outbox, safe_origin, scenario_filename
 
 APPENDIX_MARK = "本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。"
 ANCHOR_FIELDS = ("对本智能体的称呼", "称呼", "语言", "时区")
+PACKAGE_VERSION = "2"
 
 
 def receiver_guide() -> str:
@@ -38,7 +39,7 @@ def _front(text: str) -> dict[str, str]:
 
 
 def render_package(repo: Path, origin: str) -> str:
-    """Compile, then render an offline 1.1 package from the views and this origin's outbox."""
+    """Compile, then render one offline package from the views and this origin's outbox."""
     repo = Path(repo)
     origin = safe_origin(origin)
     compile_repo(repo)
@@ -58,7 +59,7 @@ def render_package(repo: Path, origin: str) -> str:
     version = compiler_version()
     lines = [
         "---",
-        'handoff_version: "1.1"',
+        f'handoff_version: "{PACKAGE_VERSION}"',
         "language: zh-CN",
         "scope: private",
         f"origin_id: {origin}",
@@ -92,39 +93,16 @@ def render_package(repo: Path, origin: str) -> str:
     return "\n".join(lines)
 
 
-def render_legacy_package(claims: list[dict[str, str]], *, mode: str = "migration") -> str:
-    """A 1.1 package with no operation appendix. `mode` is recorded and does not change import."""
-    grouped: dict[str, list[str]] = {}
-    for claim in claims:
-        section = claim.get("section") or "5. 事实与记忆（Facts & memories）"
-        text = claim["text"]
-        claim_id = claim.get("id")
-        line = f"- {text}" + (f" {{id:{claim_id}}}" if claim_id else "")
-        grouped.setdefault(section, []).append(line)
-    version = compiler_version()
-    lines = [
-        "---",
-        'handoff_version: "1.1"',
-        "language: zh-CN",
-        "scope: private",
-        f"mode: {mode}",
-        f'generator: "topmind-handoff {version}"',
-        "---",
-        "",
-        receiver_guide(),
-        "",
-        "# 交接包",
-        "",
-    ]
-    for section, items in grouped.items():
-        lines.append(f"## {section}")
-        lines.extend(items)
-        lines.append("")
-    return "\n".join(lines)
+def _ops_fence(package: str) -> re.Match[str] | None:
+    return re.search(r"```ops\n(.*?)```", package, re.S)
+
+
+def _has_ops_appendix(package: str) -> bool:
+    return _ops_fence(package) is not None
 
 
 def _appendix_ops(package: str, origin: str):
-    match = re.search(r"```ops\n(.*?)```", package, re.S)
+    match = _ops_fence(package)
     if not match:
         return []
     return parse_outbox(match.group(1), origin)
@@ -149,10 +127,11 @@ def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list
     repo = Path(repo)
     front = _front(package)
     version = front.get("handoff_version", "")
-    if version.startswith("2"):
-        raise ValueError(f"不支持的交接包大版本 {version}")
+    if version != PACKAGE_VERSION:
+        raise ValueError(f"不支持的交接包版本 {version or '（空）'}")
+    if not _has_ops_appendix(package):
+        raise ValueError("交接包没有操作附录")
     origin = safe_origin(front.get("origin_id") or "unknown")
-    dest = origin_markdown(repo / "outbox", origin)
     incoming = _appendix_ops(package, origin)
     known = _known_ids(repo)
     added: list[str] = []
@@ -165,11 +144,7 @@ def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list
         blocks.append(op.raw.rstrip("\n"))
     if not blocks or not confirmed:
         return added
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    existing = dest.read_text(encoding="utf-8") if dest.is_file() else f"# outbox {origin}\n"
-    if not existing.endswith("\n"):
-        existing += "\n"
-    dest.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
+    append_outbox(repo, origin, origin, blocks)
     compile_repo(repo)
     return added
 
@@ -183,17 +158,23 @@ class LegacyPlan:
     unkeyed: list[str] = field(default_factory=list)
     suggested_deletions: list[str] = field(default_factory=list)
     omitted_local_ids: list[str] = field(default_factory=list)
-    mode: str = "migration"
 
 
 _SECTION_6 = re.compile(r"^##\s*6(?:\.|\s|$)")
 
 
-def _claim_items(package: str) -> list[tuple[str | None, str]]:
-    """List items outside legacy section 6 and outside fenced blocks.
+def _skip_heading(stripped: str) -> bool:
+    """Boundaries are behavior, not facts. The rendered slice heading is ## 边界."""
+    if _SECTION_6.match(stripped):
+        return True
+    return stripped.lstrip("#").strip() == "边界"
 
-    Section 6 is a behavior constraint, not memory. Fenced blocks hold the
-    operations appendix, which is a ledger and not a new claim.
+
+def _claim_items(package: str) -> list[tuple[str | None, str]]:
+    """List items outside boundary sections and outside fenced blocks.
+
+    Section 6 and the rendered ## 边界 slice are behavior, not memory.
+    Fenced blocks hold the operations appendix, which is a ledger and not a new claim.
     """
     items: list[tuple[str | None, str]] = []
     skip = False
@@ -206,7 +187,7 @@ def _claim_items(package: str) -> list[tuple[str | None, str]]:
         if fenced:
             continue
         if stripped.startswith("##"):
-            skip = _SECTION_6.match(stripped) is not None
+            skip = _skip_heading(stripped)
             continue
         if skip or not stripped.startswith("- "):
             continue
@@ -236,15 +217,17 @@ def _is_tombstone(text: str) -> bool:
 
 
 def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
-    """One import plan for every 1.1 package. `mode` does not select an algorithm."""
+    """Diff view lines into host memory. Existing text and anchors are not replaced."""
     front = _front(package)
-    version = front.get("handoff_version", "1.1")
-    if version.startswith("2"):
-        raise ValueError(f"不支持的交接包大版本 {version}")
-    mode = front.get("mode") or "migration"
+    version = front.get("handoff_version", "")
+    if package.startswith("---"):
+        if version != PACKAGE_VERSION:
+            raise ValueError(f"不支持的交接包版本 {version or '（空）'}")
+        if not _has_ops_appendix(package):
+            raise ValueError("交接包没有操作附录")
     local_anchors = dict(local.get("anchors") or {})
     local_claims = dict(local.get("claims") or {})
-    plan = LegacyPlan(mode=mode)
+    plan = LegacyPlan()
     seen: set[str] = set()
     local_texts = {value for value in local_claims.values() if value}
     for claim_id, text in _claim_items(package):

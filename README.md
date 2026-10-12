@@ -1,9 +1,9 @@
 # topmind-handoff
 
 跨工具的用户记忆：放在你自己的私有 Git 仓库里。每个环境只往自己的信箱追加操作，本机脚本编译出共享视图和场景视图。
-不能拉取仓库的工具，用同一份编译结果渲染成一份 Markdown 交接包（`handoff_version: "1.1"`）。
+不能拉取仓库的工具，用同一份编译结果渲染成一份 Markdown 交接包（`handoff_version: "2"`）。
 
-English TL;DR: a private git repo of per-origin outboxes. A local script compiles the shared view and one view per scenario. Offline tools receive a 1.1 Markdown package rendered from those views. No memory-repo CI, no Release, no stored token.
+English TL;DR: a private git repo of per-origin outboxes. A local script compiles the shared view and one view per scenario. Offline tools receive a version 2 Markdown package rendered from those views. No memory-repo CI, no Release, no stored token.
 
 ## 为什么这样分
 
@@ -26,7 +26,8 @@ Codex 用 `~/.codex/skills/topmind-handoff`。其他宿主换成它的技能目�
 
 ## 日常说法
 
-- 「初始化 handoff」：空目录写骨架、编译空视图、做一个本地提交。公开仓库会拒绝。
+- 「做个交接」「做个handoff」「工作交接」：先整合读得到的最新记忆，再把这台的新操作写回。没点名接收或推送时走这一轮。离线有包就只接收；没有仓库先问一次。步骤在 `SKILL.md`。
+- 「初始化 handoff」：空目录写骨架、一份自解释的说明、编译空视图、做一个本地提交。公开仓库会拒绝。
 - 「更新云端记忆」：追加本环境的操作，本机编译，确认后和视图放在同一次提交里推送。
 - 「按云端记忆接手」：`--check` 通过后跑 `--startup`。确认后写入本工具，不覆盖已有正文。
 - 「给我一份交接包」：断网也能从本机仓库渲染。
@@ -40,7 +41,7 @@ Codex 用 `~/.codex/skills/topmind-handoff`。其他宿主换成它的技能目�
 ```text
 SKILL.md
 references/compile.md          # 编译规则，只此一份
-references/spec.md             # 交接包 1.1
+references/spec.md             # 交接包 2
 references/export.md
 references/import.md
 references/environment.md
@@ -59,4 +60,4 @@ scripts/compile_memory.py
 
 ## 版本
 
-当前技能版本 `0.5.2`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.6.0`，交接包格式 `2`。更新记录见 `CHANGELOG.md`。

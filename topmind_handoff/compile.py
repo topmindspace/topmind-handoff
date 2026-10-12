@@ -126,7 +126,15 @@ def _all_ops(compiled: Compiled) -> list[Op]:
 
 def render_status(compiled: Compiled) -> str:
     version = compiler_version()
-    lines = ["# STATUS", "", f"compiler: topmind-handoff {version}", "", "## compiled_from"]
+    lines = [
+        "# STATUS",
+        "",
+        "本文件和 views/ 是本机编译产物，不是权威。权威是 outbox/、authority.md 和 environments/。对不上就丢掉视图，重新编译。",
+        "",
+        f"compiler: topmind-handoff {version}",
+        "",
+        "## compiled_from",
+    ]
     if compiled.tips:
         for origin in sorted(compiled.tips):
             tip = compiled.tips[origin] or "-"
@@ -235,6 +243,22 @@ def status_is_valid(repo: Path) -> tuple[bool, str]:
     if recorded != tips:
         return False, "STATUS 的信箱末尾与 outbox 不一致，视图无效，需要重新编译"
     return True, "STATUS 与信箱末尾一致"
+
+
+def append_outbox(repo: Path, actor: str, origin: str, blocks: list[str]) -> Path:
+    """Append to one origin's outbox. A different actor is refused and nothing is written."""
+    dest = origin_markdown(Path(repo) / "outbox", origin)
+    origin_name = dest.name[: -len(".md")]
+    if actor != origin_name:
+        raise PermissionError(f"{actor} 只能追加自己的信箱 {origin_name}")
+    if not blocks:
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    existing = dest.read_text(encoding="utf-8") if dest.is_file() else f"# outbox {origin_name}\n"
+    if not existing.endswith("\n"):
+        existing += "\n"
+    dest.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
+    return dest
 
 
 def save_environment_card(repo: Path, actor: str, origin: str, content: str) -> Path:

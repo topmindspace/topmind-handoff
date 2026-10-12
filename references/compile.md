@@ -23,6 +23,7 @@ environments/<origin_id>.md
 outbox/<origin_id>.md
 ```
 
+初始化写出的 `README.md` 用这些名字说明每一部分、谁可以写，以及视图可以丢掉再编译。
 权威是 `outbox/`、`authority.md` 和 `environments/`。`views/` 和 `STATUS.md` 是同一次编译的结果。
 `STATUS.md` 的 `compiled_from` 必须等于每个信箱文件的最后一条 `op_id`（空信箱记为 `-`）。对不上就当视图无效，重新编译后再读。
 

@@ -1,9 +1,9 @@
 ---
-handoff_version: "1.1"
+handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "工具-demo-sync"
-compiler: "工具名 + topmind-handoff 0.5.2"
+compiler: "工具名 + topmind-handoff 0.6.0"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff

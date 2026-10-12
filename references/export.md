@@ -33,7 +33,7 @@ python3 scripts/compile_memory.py --init <空目录> --private --origin <origin_
 python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> --out <称呼>-handoff-YYYYMMDD.md
 ```
 
-包是 `handoff_version: "1.1"`。正文是共享视图、本场景视图、本环境卡片，以及 `## 10` 操作附录。
+包是 `handoff_version: "2"`。正文是共享视图、本场景视图、本环境卡片，以及 `## 10` 操作附录。
 附录声明这些操作已经反映在视图里。渲染不推送，也不改其他环境的信箱。
 
 交给用户时附上分享警告（`references/privacy.md`）。回执只给路径、冲突条数、附录里的 `op_id` 个数。不复述全文。

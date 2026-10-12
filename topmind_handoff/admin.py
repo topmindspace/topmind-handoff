@@ -32,6 +32,42 @@ def _nl(text: str) -> str:
     return text if text.endswith("\n") else text + "\n"
 
 
+AUTHORITY_INTRO = [
+    "# 写入权",
+    "",
+    "身份和边界的主人固定是 human，只接受 outbox/human.md 里的操作。",
+    "每个环境只许在自己的 outbox 末尾追加，只许整文件替换自己的 environments 卡片。",
+    "场景主人写在下面。别人写该场景只记成提议。",
+    "",
+]
+
+
+def memory_readme() -> str:
+    """Text an initialized repo uses to explain itself."""
+    return _nl(
+        "\n".join(
+            [
+                "# 云端记忆",
+                "",
+                "这是一份私有记忆仓库。本机的 topmind-handoff 编译它。仓库里没有 CI，也没有 Release。",
+                "凭据只用已经配好的 git 或 gh。不写密码、API key、token、证件号、银行卡号、精确住址、他人隐私、记账明细。",
+                "",
+                "## 各部分",
+                "",
+                "- `outbox/<origin_id>.md`：这个环境的操作账本。只许该环境在文件末尾追加。不改别人的信箱，不改已有行。",
+                "- `environments/<origin_id>.md`：这个环境的卡片。只许该环境整文件替换。",
+                "- `authority.md`：谁可以写进视图。身份和边界的主人是 human，只接受 `outbox/human.md`。",
+                "- `facts/`：整理时从索引收走的长说明。不是另一套权威。",
+                "- `views/shared.md` 和 `views/scenario-<场景>.md`：本机编译产物，可以丢掉后重新编译。",
+                "- `STATUS.md`：同一次编译的校对。信箱末尾对不上，视图就无效。",
+                "",
+                "权威是 `outbox/`、`authority.md` 和 `environments/`。`views/` 和 `STATUS.md` 是编译产物。Git 冲突时丢掉这两边的视图，保留全部信箱，在本机重新编译。",
+                "",
+            ]
+        )
+    )
+
+
 def init_memory_repo(
     path: Path,
     *,
@@ -53,27 +89,12 @@ def init_memory_repo(
         raise FileExistsError(f"{path} 不是空目录")
     path.mkdir(parents=True, exist_ok=True)
     refreshed = today or date.today().isoformat()
-    (path / "README.md").write_text(
-        _nl(
-            "\n".join(
-                [
-                    "# 云端记忆",
-                    "",
-                    "这个目录的 HEAD 是当前记忆。共享视图、场景视图和 STATUS.md 由本机脚本编译，不由 CI 生成。",
-                    "开工时读共享视图、本环境所属的一个场景、本环境卡片，以及与本环境有关的冲突。",
-                    "编译规则只在 topmind-handoff 的 `references/compile.md`。",
-                    "",
-                ]
-            )
-        ),
-        encoding="utf-8",
-    )
+    (path / "README.md").write_text(memory_readme(), encoding="utf-8")
     (path / "authority.md").write_text(
         _nl(
             "\n".join(
-                [
-                    "# 写入权",
-                    "",
+                AUTHORITY_INTRO
+                + [
                     "- scope: shared.identity",
                     "  owner: human",
                     "- scope: shared.boundaries",
@@ -82,6 +103,11 @@ def init_memory_repo(
                 ]
             )
         ),
+        encoding="utf-8",
+    )
+    (path / "facts").mkdir()
+    (path / "facts" / "README.md").write_text(
+        _nl("# 长说明\n\n整理时才把索引收进这里。这些文件不是另一套权威。权威仍是信箱。\n"),
         encoding="utf-8",
     )
     outbox = path / "outbox"
@@ -124,7 +150,7 @@ def set_scenario_owner(repo: Path, scenario: str, origin: str) -> None:
     current[f"scenario.{scenario}"] = origin
     order = ["shared.identity", "shared.boundaries"]
     rest = sorted(key for key in current if key not in order)
-    lines = ["# 写入权", ""]
+    lines = list(AUTHORITY_INTRO)
     for key in order + rest:
         lines.append(f"- scope: {key}")
         lines.append(f"  owner: {current[key]}")

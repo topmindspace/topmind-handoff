@@ -8,7 +8,7 @@ from pathlib import Path
 
 from topmind_handoff.admin import PublicRepoRefused, init_memory_repo, organize_repo, set_scenario_owner
 from topmind_handoff.compile import compile_repo, startup_read, status_is_valid
-from topmind_handoff.package import render_legacy_package, render_package
+from topmind_handoff.package import render_package
 
 USAGE = """\
 用法：
@@ -18,7 +18,6 @@ USAGE = """\
   python3 scripts/compile_memory.py --init <目录> --public --origin <origin_id>
   python3 scripts/compile_memory.py --organize <记忆目录> [--today YYYY-MM-DD]
   python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> [--out 文件]
-  python3 scripts/compile_memory.py --render-legacy --out 文件
   python3 scripts/compile_memory.py --own <记忆目录> --scenario <场景> --origin <origin_id>
   python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 """
@@ -42,8 +41,6 @@ def main(argv: list[str]) -> int:
         return _organize(argv[1:])
     if argv[0] == "--render":
         return _render(argv[1:])
-    if argv[0] == "--render-legacy":
-        return _render_legacy(argv[1:])
     if argv[0] == "--own":
         return _own(argv[1:])
     if argv[0] == "--startup":
@@ -139,19 +136,3 @@ def _startup(argv: list[str]) -> int:
     return 0
 
 
-def _render_legacy(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--out", required=True)
-    parser.add_argument("--mode", default="migration")
-    args = parser.parse_args(argv)
-    text = render_legacy_package(
-        [
-            {"section": "1. 这个人是谁（Identity）", "text": "称呼：示例", "id": "anchor-name"},
-            {"section": "1. 这个人是谁（Identity）", "text": "时区：Asia/Shanghai", "id": "anchor-tz"},
-            {"section": "5. 事实与记忆（Facts & memories）", "text": "已撤回：示例条目", "id": "pref-vim"},
-        ],
-        mode=args.mode,
-    )
-    Path(args.out).write_text(text, encoding="utf-8")
-    print(args.out)
-    return 0

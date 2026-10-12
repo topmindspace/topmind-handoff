@@ -1,11 +1,11 @@
-# 交接包格式（Handoff Package Spec v1.1）
+# 交接包格式（Handoff Package Spec v2）
 
-交接包是一份 Markdown。`handoff_version` 仍是 `"1.1"`。
+交接包是一份 Markdown。`handoff_version` 是 `"2"`。
 它携带编译好的视图、本环境卡片，以及该环境的操作附录。
 因果编译规则只写在 `references/compile.md`。本文件只规定包长什么样、接收时哪些字必须照做。
 
 没装技能的接收方按下面的接收指引做。装了技能时，重放附录之前先跑 `scripts/compile_memory.py`。
-看见不认识的 frontmatter 字段就忽略，继续。只有 `2.x` 及以上才停下。
+看见不认识的 frontmatter 字段就忽略，继续。`handoff_version` 不是 `"2"` 就停下，不写文件。
 
 ## 接收指引区块（Receiver Guide）
 
@@ -50,19 +50,18 @@ frontmatter 之后、正文标题之前，放这段接收指引。级别是推�
 
 ```yaml
 ---
-handoff_version: "1.1"
+handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "topmind-handoff 0.5.2"
-generator: "工具名 + topmind-handoff 0.5.2"
+compiler: "topmind-handoff 0.6.0"
+generator: "工具名 + topmind-handoff 0.6.0"
 ---
 ```
 
-- `handoff_version`：`"1.1"`。`1.0` 包仍可接收。
+- `handoff_version`：`"2"`。其他版本停下，不写文件。
 - `origin_id`：这份包从哪个环境渲染。形式 `工具-账号标识-范围`。不是密钥。邮箱只有用户要求保留才放进标识。
 - `compiler`：渲染时的技能版本。
-- `mode`：旧包可能有 `migration` 或 `sync`。接收时忽略这个字段，两条路是同一种确认后合并。
 - `scope`：只有 `private`。不把包发给第三方。
 
 ## 正文
@@ -71,11 +70,9 @@ generator: "工具名 + topmind-handoff 0.5.2"
 
 1. **视图**：共享视图，以及本环境卡片上 `role` 对应的那一个场景视图。这是已经编译好的结果。
 2. **环境卡片**：只有这个 `origin_id` 的卡片，含路径、连接器和已装技能。家目录写成 `~`。覆盖项只在这个环境生效。
-3. **操作附录**：`## 10. 操作附录（已反映在上文视图中）`。里面是这个环境信箱里的操作。第一句写明附录不是新事实。接收方按 `op_id` 去重重放。没确认不写文件。确认后只追加还没有的 `op_id`，不删已有行。已经有的 `op_id` 再放一次，视图不变。
+3. **操作附录**：`## 10. 操作附录（已反映在上文视图中）`。里面是这个环境信箱里的操作。第一句写明附录不是新事实。接收方按 `op_id` 去重重放。没确认不写文件。确认后只追加还没有的 `op_id`，不删已有行。已经有的 `op_id` 再放一次，视图不变。没有这段附录就停下，不写文件。
 
-没有操作附录的 1.1 旧包仍然合法。按 `references/import.md` 做确认后的合并：已有正文和锚点不覆盖，墓碑只建议删除，包里没写的本地条目留下。
-
-## 旧包里的主张
+## 写入本工具时
 
 列表项末尾可以用 `{id:xxxx}`。没有 id 的条目不自动写入。正文与本地完全相同就当已经有了，其余列出来问。
 
@@ -83,7 +80,7 @@ generator: "工具名 + topmind-handoff 0.5.2"
 - 同一个 id 正文不同是冲突，不覆盖本地。
 - 墓碑是同一个 id，正文含「已撤回」或 `withdrawn`。只放进建议删除，不自动删。
 - 包里没有的 id 留在本地。
-- 第 6 节边界只作行为约束，不进入新增，也不进入建议删除。
+- 第 6 节和渲染出的「边界」节只作行为约束，不进入新增，也不进入建议删除。
 
 ## 环境卡片里的技能
 
