@@ -134,6 +134,51 @@ refreshed: 2026-10-12
         self.assertEqual(applied["claims"]["pref-keep"], "留下这条")
         self.assertEqual(applied["claims"]["pref-new"], "偏好深色")
 
+    def test_legacy_section_6_is_not_stored_as_a_fact(self) -> None:
+        package = """\
+---
+handoff_version: "1.1"
+mode: migration
+---
+
+## 5. 事实与记忆（Facts & memories）
+
+- 偏好深色 {id:pref-new}
+- 已撤回：旧偏好 {id:pref-old}
+
+## 6. 边界（Boundaries）
+
+- 不携带记账明细 {id:boundaries.ledger}
+- 已撤回：旧边界 {id:boundaries.old}
+
+## 边界
+
+- 人类写下的边界 {id:boundaries.human}
+
+## 7. 其他
+
+- 另一事实 {id:fact-next}
+"""
+        local = {"anchors": {}, "claims": {"pref-keep": "留下这条", "boundaries.old": "本地旧边界"}}
+        plan = legacy_import_plan(package, local)
+        self.assertNotIn("boundaries.ledger", plan.additions)
+        self.assertNotIn("boundaries.old", plan.additions)
+        self.assertNotIn("boundaries.ledger", plan.suggested_deletions)
+        self.assertNotIn("boundaries.old", plan.suggested_deletions)
+        self.assertIn("pref-new", plan.additions)
+        self.assertEqual(plan.additions["pref-new"], "偏好深色")
+        self.assertIn("boundaries.human", plan.additions)
+        self.assertIn("fact-next", plan.additions)
+        self.assertIn("pref-old", plan.suggested_deletions)
+        self.assertIn("boundaries.old", plan.omitted_local_ids)
+        applied = apply_legacy_plan(plan, local, confirmed=True)
+        self.assertNotIn("boundaries.ledger", applied["claims"])
+        self.assertNotIn("不携带记账明细", " ".join(applied["claims"].values()))
+        self.assertEqual(applied["claims"]["pref-new"], "偏好深色")
+        self.assertEqual(applied["claims"]["boundaries.human"], "人类写下的边界")
+        self.assertEqual(applied["claims"]["boundaries.old"], "本地旧边界")
+        self.assertEqual(applied["claims"]["pref-keep"], "留下这条")
+
     def test_replay_rejects_origin_id_outside_the_repo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

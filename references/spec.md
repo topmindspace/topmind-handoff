@@ -54,8 +54,8 @@ handoff_version: "1.1"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "topmind-handoff 0.5.0"
-generator: "工具名 + topmind-handoff 0.5.0"
+compiler: "topmind-handoff 0.5.1"
+generator: "工具名 + topmind-handoff 0.5.1"
 ---
 ```
 
@@ -82,7 +82,7 @@ generator: "工具名 + topmind-handoff 0.5.0"
 - 画像锚点是称呼、对本智能体的称呼、语言、时区。本地已有值就不写入。
 - 墓碑是同一个 id，正文含「已撤回」或 `withdrawn`。只放进建议删除，不自动删。
 - 包里没有的 id 留在本地。
-- 第 6 节边界只作行为约束，不写入事实记忆。
+- 第 6 节边界只作行为约束，不进入新增，也不进入建议删除。
 
 ## 环境卡片里的技能
 

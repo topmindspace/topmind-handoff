@@ -59,4 +59,4 @@ scripts/compile_memory.py
 
 ## 版本
 
-当前技能版本 `0.5.0`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.5.1`，交接包格式 `1.1`。更新记录见 `CHANGELOG.md`。

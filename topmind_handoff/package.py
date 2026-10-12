@@ -179,11 +179,19 @@ class LegacyPlan:
     mode: str = "migration"
 
 
+_SECTION_6 = re.compile(r"^##\s*6(?:\.|\s|$)")
+
+
 def _claim_items(package: str) -> list[tuple[str | None, str]]:
+    """List items outside legacy section 6. That section is a behavior constraint, not memory."""
     items: list[tuple[str | None, str]] = []
+    skip = False
     for line in package.splitlines():
         stripped = line.strip()
-        if not stripped.startswith("- "):
+        if stripped.startswith("##"):
+            skip = _SECTION_6.match(stripped) is not None
+            continue
+        if skip or not stripped.startswith("- "):
             continue
         body = stripped[2:].strip()
         match = re.search(r"\{id:([^}]+)\}\s*$", body)
