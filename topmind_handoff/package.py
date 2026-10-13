@@ -9,7 +9,14 @@ from datetime import date
 from pathlib import Path
 
 from topmind_handoff.compile import append_outbox, compile_repo, projection_body
-from topmind_handoff.model import ROOT, compiler_version, origin_markdown, parse_outbox, safe_origin
+from topmind_handoff.model import (
+    REVIEW_MARK,
+    ROOT,
+    compiler_version,
+    origin_markdown,
+    parse_outbox,
+    safe_origin,
+)
 
 APPENDIX_MARK = "本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。"
 ANCHOR_FIELDS = ("对本智能体的称呼", "称呼", "语言", "时区")
@@ -176,13 +183,20 @@ def _claim_items(package: str) -> list[tuple[str | None, str]]:
             continue
         if skip or not stripped.startswith("- "):
             continue
-        body = stripped[2:].strip()
+        body = _without_review_mark(stripped[2:].strip())
         match = re.search(r"\{id:([^}]+)\}\s*$", body)
         claim_id = match.group(1) if match else None
         if match:
             body = body[: match.start()].strip()
         items.append((claim_id, body))
     return items
+
+
+def _without_review_mark(body: str) -> str:
+    """A due line ends with the review label after `{id:…}`. The label is not claim text."""
+    if body.endswith(REVIEW_MARK):
+        return body[: -len(REVIEW_MARK)].rstrip()
+    return body
 
 
 def _anchor_of(text: str) -> tuple[str, str] | None:

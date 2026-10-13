@@ -3,7 +3,7 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "工具-demo-sync"
-compiler: "工具名 + topmind-handoff 0.6.1"
+compiler: "工具名 + topmind-handoff 0.6.2"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff

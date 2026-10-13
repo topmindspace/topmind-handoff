@@ -54,8 +54,8 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "topmind-handoff 0.6.1"
-generator: "工具名 + topmind-handoff 0.6.1"
+compiler: "topmind-handoff 0.6.2"
+generator: "工具名 + topmind-handoff 0.6.2"
 ---
 ```
 
@@ -76,7 +76,7 @@ generator: "工具名 + topmind-handoff 0.6.1"
 
 ## 写入本工具时
 
-列表项末尾可以用 `{id:xxxx}`。没有 id 的条目不自动写入。正文与本地完全相同就当已经有了，其余列出来问。
+列表项用 `{id:xxxx}` 标明 id。这个记号在行尾，或者后面只跟一个「（未复核）」。后面这个词是复核标签，不是正文，也不取消 id。没有 id 的条目不自动写入。正文与本地完全相同就当已经有了，其余列出来问。
 
 - 画像锚点是称呼、对本智能体的称呼、语言、时区。本地已有值就不写入。空着的锚点确认后可以补。
 - 同一个 id 正文不同是冲突，不覆盖本地。

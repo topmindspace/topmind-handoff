@@ -628,6 +628,84 @@ override.fact-due: 覆盖句只在本环境
             )
             self.assertIn("Grok-demo-sync#3", appendix)
 
+    def test_legacy_import_keeps_ids_on_rendered_review_lines(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            today = date(2026, 10, 13)
+            due_fact = (today - timedelta(days=30)).isoformat()
+            young = (today - timedelta(days=29)).isoformat()
+            due_identity = (today - timedelta(days=180)).isoformat()
+            write(root, "authority.md", AUTHORITY)
+            write(
+                root,
+                "outbox/human.md",
+                f"""\
+- op_id: human#1
+  op: set
+  id: identity.name
+  scope: shared
+  slice: identity
+  base: none
+  at: {due_identity}
+  text: 称呼：张三
+- op_id: human#2
+  op: set
+  id: fact-old
+  scope: shared
+  slice: fact
+  base: none
+  at: {due_fact}
+  text: 旧事实
+- op_id: human#3
+  op: set
+  id: fact-young
+  scope: shared
+  slice: fact
+  base: none
+  at: {young}
+  text: 年轻事实
+""",
+            )
+            write(
+                root,
+                "environments/Grok-demo-sync.md",
+                f"""\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: {today.isoformat()}
+---
+""",
+            )
+            package = render_package(root, "Grok-demo-sync", today=today)
+            self.assertIn("- 旧事实 {id:fact-old} （未复核）", package)
+            self.assertIn("- 称呼：张三 {id:identity.name} （未复核）", package)
+            self.assertIn("- 年轻事实 {id:fact-young}", package)
+            self.assertNotIn("- 年轻事实 {id:fact-young} （未复核）", package)
+            held = legacy_import_plan(
+                package,
+                {"anchors": {"称呼": "张三"}, "claims": {"fact-young": "年轻事实"}},
+            )
+            self.assertEqual(held.additions.get("fact-old"), "旧事实")
+            self.assertNotIn("（未复核）", held.additions["fact-old"])
+            self.assertNotIn("fact-old", held.text_conflicts)
+            self.assertNotIn("fact-young", held.additions)
+            self.assertNotIn("fact-young", held.text_conflicts)
+            self.assertNotIn("称呼", held.anchor_conflicts)
+            self.assertNotIn("identity.name", held.additions)
+            self.assertNotIn("fact-old", held.omitted_local_ids)
+            unkeyed = "\n".join(held.unkeyed)
+            self.assertNotIn("旧事实", unkeyed)
+            self.assertNotIn("称呼：张三", unkeyed)
+            self.assertNotIn("identity.name", unkeyed)
+            empty = legacy_import_plan(package, {"anchors": {}, "claims": {}})
+            self.assertEqual(empty.anchor_fills.get("称呼"), "张三")
+            self.assertEqual(empty.additions.get("fact-old"), "旧事实")
+            self.assertEqual(empty.additions.get("fact-young"), "年轻事实")
+            self.assertNotIn("identity.name", empty.additions)
+            self.assertFalse(empty.anchor_conflicts)
+            self.assertFalse(any("（未复核）" in text for text in empty.additions.values()))
+
     def test_missing_version_or_appendix_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)

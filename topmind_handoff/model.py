@@ -26,6 +26,7 @@ REVIEW_DAYS = {
     "fact": 30,
 }
 CARD_STALE_DAYS = 90
+REVIEW_MARK = "（未复核）"
 INDEX_LINE_BUDGET = 200
 INDEX_BYTE_BUDGET = 25 * 1024
 
@@ -46,7 +47,7 @@ def review_suffix(op: Op, today: date | None) -> str:
     if limit is None or written is None:
         return ""
     if (today - written).days >= limit:
-        return " （未复核）"
+        return f" {REVIEW_MARK}"
     return ""
 
 

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from topmind_handoff.model import (
     CARD_STALE_DAYS,
+    REVIEW_MARK,
     SLICES,
     Card,
     ClaimResult,
@@ -320,7 +321,9 @@ def save_environment_card(repo: Path, actor: str, origin: str, content: str) -> 
     return dest
 
 
-_FACT_LINE = re.compile(r"^- (?P<body>.*)\{id:(?P<cid>[^}]+)\}(?P<suffix>\s*（未复核）)?\s*$")
+_FACT_LINE = re.compile(
+    rf"^- (?P<body>.*){{id:(?P<cid>[^}}]+)}}(?P<suffix>\s*{re.escape(REVIEW_MARK)})?\s*$"
+)
 
 
 def _override_line(line: str, overrides: dict[str, str]) -> str | None:
