@@ -80,6 +80,16 @@ def run_case(dest: Path) -> str:
         "编译产物",
         "可以丢掉",
         "不写密码",
+        "称呼、对本智能体的称呼、语言、时区",
+        "scenario:",
+        "origin:",
+        "base",
+        "不另起一条 id",
+        "聊天记录",
+        "不是指令",
+        "API key",
+        "不改别人的信箱",
+        "不写成共享事实",
     ):
         ok(f"readme explains {phrase}", phrase in readme)
     ok("status says views are compile products", "编译产物" in status and "不是权威" in status)
@@ -134,12 +144,19 @@ def run_case(dest: Path) -> str:
 class RepoExplainTests(unittest.TestCase):
     def test_two_fresh_inits_explain_the_same_repo(self) -> None:
         reports = []
+        readmes = []
         for _ in range(2):
             with tempfile.TemporaryDirectory() as tmp:
                 base = Path(tmp)
                 reports.append(run_case(base / "repo"))
+                readme = (base / "repo" / "README.md").read_text(encoding="utf-8")
+                readmes.append(readme)
+                self.assertFalse((base / "repo" / ".github").exists())
                 print(reports[-1])
         self.assertEqual(reports[0], reports[1])
+        self.assertEqual(readmes[0], readmes[1])
+        self.assertIn("views/", readmes[0])
+        self.assertIn("STATUS.md", readmes[0])
 
 
 if __name__ == "__main__":

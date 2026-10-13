@@ -6,7 +6,7 @@
 
 1. 拉取。
 2. `python3 scripts/compile_memory.py --check <记忆目录>`。失败就先编译，再读。
-3. `python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>`。投影规则在 `references/compile.md`。
+3. `python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>`。投影规则在 `references/compile.md`。输出里的「未复核」和「待提炼」给用户看。这一步不整理，不撤回。
 4. 对照本工具已有记忆做差。算法见下面「合并时不覆盖」。
 5. 用户确认后，按 `references/tool-adapters.md` 写入本工具自己的位置。投影里的覆盖项只留在本工具，不写回共享信箱。不追加别人的信箱，不替换别人的卡片。
 

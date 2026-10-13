@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from pathlib import Path
 
 from topmind_handoff.model import (
-    SLICE_TITLE,
+    CARD_STALE_DAYS,
+    SLICES,
     Card,
     ClaimResult,
     Compiled,
@@ -15,13 +17,20 @@ from topmind_handoff.model import (
     compiler_version,
     origin_markdown,
     parse_authority,
+    parse_day,
+    review_suffix,
     scenario_filename,
     parse_card,
     parse_outbox,
+    safe_origin,
     scenario_names,
+    slice_title,
+    view_slice_order,
 )
 
 VIEW_ORDER = ("identity", "boundaries", "preference", "project", "fact")
+_REVIEW_AS_OF = re.compile(r"^review_as_of:\s*(\d{4}-\d{2}-\d{2})\s*$", re.M)
+_CITE_EDGE = r"[A-Za-z0-9_.-]"
 
 
 def _ensure_nl(text: str) -> str:
@@ -66,7 +75,9 @@ def _conflict_block(result: ClaimResult) -> list[str]:
     return lines
 
 
-def _section_lines(results: list[ClaimResult], *, inline_detail: bool) -> dict[str, list[str]]:
+def _section_lines(
+    results: list[ClaimResult], *, inline_detail: bool, today: date | None = None
+) -> dict[str, list[str]]:
     sections = {name: [] for name in VIEW_ORDER}
     for result in sorted(results, key=lambda item: item.claim_id):
         if result.conflict or result.retracted or not result.heads:
@@ -75,20 +86,25 @@ def _section_lines(results: list[ClaimResult], *, inline_detail: bool) -> dict[s
         if head.kind != "set":
             continue
         bucket = sections.setdefault(head.slice, [])
-        bucket.append(_fact_line(head))
+        bucket.append(_fact_line(head, review_suffix(head, today)))
         if inline_detail and head.detail:
             bucket.extend(f"  {line}" for line in head.detail.splitlines())
     return sections
 
 
-def render_scope_view(title: str, results: list[ClaimResult], *, inline_detail: bool) -> str:
-    sections = _section_lines(results, inline_detail=inline_detail)
+def render_scope_view(
+    title: str, results: list[ClaimResult], *, inline_detail: bool, today: date | None = None
+) -> str:
+    sections = _section_lines(results, inline_detail=inline_detail, today=today)
     conflicts = [result for result in results if result.conflict]
     conflicts.sort(key=lambda item: item.claim_id)
     lines = [f"# {title}", ""]
-    for slice_name in VIEW_ORDER:
-        lines.append(f"## {SLICE_TITLE[slice_name]}")
+    for slice_name in view_slice_order(sections):
+        lines.append(f"## {slice_title(slice_name)}")
         body = sections.get(slice_name) or []
+        # An unknown slice with no rows is not a section. Known slices stay, even when empty.
+        if slice_name not in VIEW_ORDER and not body:
+            continue
         lines.extend(body or ["（无）"])
         lines.append("")
     lines.append("## 冲突")
@@ -101,9 +117,11 @@ def render_scope_view(title: str, results: list[ClaimResult], *, inline_detail: 
     return _ensure_nl("\n".join(lines))
 
 
-def render_views(compiled: Compiled, *, inline_detail: bool = True) -> dict[str, str]:
+def render_views(
+    compiled: Compiled, *, inline_detail: bool = True, today: date | None = None
+) -> dict[str, str]:
     shared = [result for (scope, _cid), result in compiled.claims.items() if scope == "shared"]
-    rendered = {"shared.md": render_scope_view("共享", shared, inline_detail=inline_detail)}
+    rendered = {"shared.md": render_scope_view("共享", shared, inline_detail=inline_detail, today=today)}
     names = scenario_names(compiled.authority, compiled.cards, _all_ops(compiled))
     for name in names:
         filename = scenario_filename(name)
@@ -111,7 +129,9 @@ def render_views(compiled: Compiled, *, inline_detail: bool = True) -> dict[str,
             continue
         scope = f"scenario:{name}"
         results = [result for (item_scope, _cid), result in compiled.claims.items() if item_scope == scope]
-        rendered[filename] = render_scope_view(f"场景：{name}", results, inline_detail=inline_detail)
+        rendered[filename] = render_scope_view(
+            f"场景：{name}", results, inline_detail=inline_detail, today=today
+        )
     return rendered
 
 
@@ -124,7 +144,7 @@ def _all_ops(compiled: Compiled) -> list[Op]:
     return ops
 
 
-def render_status(compiled: Compiled) -> str:
+def render_status(compiled: Compiled, today: date | None = None) -> str:
     version = compiler_version()
     lines = [
         "# STATUS",
@@ -133,8 +153,11 @@ def render_status(compiled: Compiled) -> str:
         "",
         f"compiler: topmind-handoff {version}",
         "",
-        "## compiled_from",
     ]
+    if today is not None:
+        lines.append(f"review_as_of: {today.isoformat()}")
+        lines.append("")
+    lines.append("## compiled_from")
     if compiled.tips:
         for origin in sorted(compiled.tips):
             tip = compiled.tips[origin] or "-"
@@ -178,6 +201,14 @@ def render_status(compiled: Compiled) -> str:
             lines.append(f"  text: {op.text}")
     else:
         lines.append("（无）")
+    lines.extend(["", "## 待提炼"])
+    refine = refinement_lines(
+        list(compiled.claims.values()),
+        compiled.cards,
+        today,
+        known_ids=_current_ids(compiled),
+    )
+    lines.extend(refine or ["（无）"])
     lines.extend(["", "## origins"])
     origins = sorted(set(compiled.tips) | set(compiled.cards))
     if origins:
@@ -193,19 +224,36 @@ def render_status(compiled: Compiled) -> str:
     return _ensure_nl("\n".join(lines))
 
 
-def compile_repo(repo: Path) -> Compiled:
-    """Regenerate views and STATUS from outboxes. Existing view text is discarded."""
+def stored_review_today(repo: Path) -> date | None:
+    """The explicit day a previous compile or organize used. Absent means unlabeled views."""
+    path = Path(repo) / "STATUS.md"
+    if not path.is_file():
+        return None
+    match = _REVIEW_AS_OF.search(path.read_text(encoding="utf-8"))
+    if not match:
+        return None
+    return parse_day(match.group(1))
+
+
+def compile_repo(repo: Path, today: date | None = None) -> Compiled:
+    """Regenerate views and STATUS from outboxes. Existing view text is discarded.
+
+    Review labels are rendered from `at` and `today`. A later compile with no day
+    reuses `review_as_of` so it does not wipe labels. The day never picks a head.
+    """
     repo = Path(repo)
+    if today is None:
+        today = stored_review_today(repo)
     compiled = build_compiled(repo)
     views = repo / "views"
     views.mkdir(parents=True, exist_ok=True)
-    rendered = render_views(compiled, inline_detail=True)
+    rendered = render_views(compiled, inline_detail=True, today=today)
     for path in views.glob("scenario-*.md"):
         if path.name not in rendered:
             path.unlink()
     for name, text in rendered.items():
         (views / name).write_text(text, encoding="utf-8")
-    (repo / "STATUS.md").write_text(render_status(compiled), encoding="utf-8")
+    (repo / "STATUS.md").write_text(render_status(compiled, today=today), encoding="utf-8")
     return compiled
 
 
@@ -358,6 +406,103 @@ def _project_shared(repo: Path, shared: str, overrides: dict[str, str]) -> str:
     return _ensure_nl("\n".join(output))
 
 
+def _results_for(compiled: Compiled, scope: str) -> list[ClaimResult]:
+    return [result for (item_scope, _cid), result in compiled.claims.items() if item_scope == scope]
+
+
+def _current_heads(results: list[ClaimResult]) -> list[Op]:
+    heads: list[Op] = []
+    for result in results:
+        if result.conflict or result.retracted or not result.heads:
+            continue
+        head = result.heads[0]
+        if head.kind == "set":
+            heads.append(head)
+    return heads
+
+
+def _current_ids(compiled: Compiled) -> set[str]:
+    found: set[str] = set()
+    for result in compiled.claims.values():
+        for head in _current_heads([result]):
+            found.add(head.claim_id)
+    return found
+
+
+def _scope_heads(compiled: Compiled, scope: str) -> dict[str, Op]:
+    return {head.claim_id: head for head in _current_heads(_results_for(compiled, scope))}
+
+
+def cites_claim(text: str, claim_id: str) -> bool:
+    """True when text names another claim id as a whole token, not as a prefix."""
+    if not text or not claim_id or claim_id not in text:
+        return False
+    pattern = re.compile(
+        r"(?<!" + _CITE_EDGE + r")" + re.escape(claim_id) + r"(?!" + _CITE_EDGE + r")"
+    )
+    return pattern.search(text) is not None
+
+
+def card_is_due(card: Card, today: date | None) -> bool:
+    if card.stale:
+        return True
+    if today is None or not card.refreshed:
+        return False
+    written = parse_day(card.refreshed)
+    if written is None:
+        return False
+    return (today - written).days >= CARD_STALE_DAYS
+
+
+def refinement_lines(
+    results: list[ClaimResult],
+    cards: dict[str, Card],
+    today: date | None,
+    *,
+    known_ids: set[str],
+) -> list[str]:
+    """List review work. Does not retract, rewrite, or touch outboxes.
+
+    Lines are sentences, not `- ` claims, so a package import does not store them as facts.
+    """
+    heads = _current_heads(results)
+    heads.sort(key=lambda op: (op.scope, op.claim_id, op.op_id))
+    lines: list[str] = []
+    for head in heads:
+        if head.slice not in SLICES:
+            lines.append(f"维度 `{head.slice}` 单独成节，没有并进事实。id: {head.claim_id}")
+    for head in heads:
+        blob = f"{head.text}\n{head.detail}"
+        for other in sorted(known_ids):
+            if other == head.claim_id:
+                continue
+            if cites_claim(blob, other):
+                lines.append(f"引用 `{head.claim_id}` 提到当前说法 `{other}`。不撤回，不改写。")
+    for origin in sorted(cards):
+        if card_is_due(cards[origin], today):
+            lines.append(f"环境卡片 `{origin}` 未刷新。")
+    return lines
+
+
+def _label_line(line: str, heads: dict[str, Op], today: date | None) -> str:
+    if today is None:
+        return line
+    match = _FACT_LINE.match(line.rstrip())
+    if not match:
+        return line
+    head = heads.get(match.group("cid"))
+    if head is None:
+        return line
+    suffix = review_suffix(head, today)
+    return f"- {match.group('body').rstrip()} {{id:{match.group('cid')}}}{suffix}"
+
+
+def _label_text(text: str, heads: dict[str, Op], today: date | None) -> str:
+    if today is None:
+        return text
+    return _ensure_nl("\n".join(_label_line(line, heads, today) for line in text.splitlines()))
+
+
 def _conflicts_for_origin(compiled: Compiled, origin: str) -> str:
     blocks: list[str] = []
     for result in sorted(compiled.claims.values(), key=lambda item: (item.scope, item.claim_id)):
@@ -370,41 +515,49 @@ def _conflicts_for_origin(compiled: Compiled, origin: str) -> str:
     return _ensure_nl("\n".join(blocks))
 
 
-def _origin_projection(compiled: Compiled, origin: str) -> str:
-    """Sets whose scope is this origin. Conflicts stay in the conflict section."""
+def _origin_projection(compiled: Compiled, origin: str, today: date | None = None) -> str:
+    """Sets whose scope is this origin, each slice under its own heading.
+
+    Conflicts stay in the conflict section. Origin text is not part of the shared view.
+    """
     scope = f"origin:{origin}"
-    results = [result for (item_scope, _cid), result in compiled.claims.items() if item_scope == scope]
-    lines: list[str] = []
-    for result in sorted(results, key=lambda item: item.claim_id):
-        if result.conflict or result.retracted or not result.heads:
-            continue
-        head = result.heads[0]
-        if head.kind != "set":
-            continue
-        lines.append(_fact_line(head))
-        if head.detail:
-            lines.extend(f"  {line}" for line in head.detail.splitlines())
-    if not lines:
+    results = _results_for(compiled, scope)
+    sections = _section_lines(results, inline_detail=True, today=today)
+    filled = [name for name in view_slice_order(sections) if sections.get(name)]
+    if not filled:
         return ""
-    return "## 本环境范围\n\n" + "\n".join(lines) + "\n"
+    lines = ["## 本环境范围", ""]
+    for name in filled:
+        lines.append(f"### {slice_title(name)}")
+        lines.extend(sections[name])
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
 
 
-def startup_read(repo: Path, origin: str) -> str:
-    """Shared view, this origin's scenario, its card, and conflicts that involve it.
+def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
+    """One origin projection shared by startup and the offline package.
 
-    Card overrides are applied only in this projection. views/shared.md is not rewritten.
+    Reads views when they are inside the repo. Does not write files.
     """
     repo = Path(repo)
+    origin = safe_origin(origin)
     compiled = build_compiled(repo)
+    if today is None:
+        today = stored_review_today(repo)
     views = repo / "views"
+    rendered = render_views(compiled, today=today)
     shared_path = views / "shared.md"
     if shared_path.is_file() and _path_inside(shared_path, views):
         shared = shared_path.read_text(encoding="utf-8")
     else:
-        shared = render_views(compiled)["shared.md"]
+        shared = rendered["shared.md"]
     card = compiled.cards.get(origin)
     overrides = card.overrides if card else {}
-    projected = _project_shared(repo, shared, overrides)
+    projected = _label_text(
+        _project_shared(repo, shared, overrides),
+        _scope_heads(compiled, "shared"),
+        today,
+    )
     role = card.role if card else ""
     filename = scenario_filename(role) if role else None
     scenario_path = views / filename if filename else None
@@ -413,14 +566,18 @@ def startup_read(repo: Path, origin: str) -> str:
     if scenario_path is not None and scenario_path.is_file():
         scenario = scenario_path.read_text(encoding="utf-8")
     elif filename:
-        scenario = render_views(compiled).get(filename, "# 场景\n\n（无）\n")
+        scenario = rendered.get(filename, "# 场景\n\n（无）\n")
     else:
         scenario = "（无）\n"
+    scenario = _label_text(scenario, _scope_heads(compiled, f"scenario:{role}") if role else {}, today)
     card_text = card.raw if card else "（无）\n"
-    origin_text = _origin_projection(compiled, origin).rstrip("\n")
+    origin_text = _origin_projection(compiled, origin, today=today).rstrip("\n")
+    visible: list[ClaimResult] = list(_results_for(compiled, "shared"))
+    if role:
+        visible.extend(_results_for(compiled, f"scenario:{role}"))
+    visible.extend(_results_for(compiled, f"origin:{origin}"))
+    refine = refinement_lines(visible, compiled.cards, today, known_ids=_current_ids(compiled))
     parts = [
-        f"# 开工读取（{origin})",
-        "",
         "## 冲突（与本环境有关）",
         _conflicts_for_origin(compiled, origin).rstrip("\n"),
         "",
@@ -433,5 +590,26 @@ def startup_read(repo: Path, origin: str) -> str:
     ]
     if origin_text:
         parts.extend([origin_text, ""])
-    parts.extend(["## 环境卡片", card_text.rstrip("\n"), ""])
+    parts.extend(
+        [
+            "## 环境卡片",
+            card_text.rstrip("\n"),
+            "",
+            "## 待提炼",
+            "\n".join(refine) if refine else "（无）",
+            "",
+        ]
+    )
     return _ensure_nl("\n".join(parts))
+
+
+def startup_read(repo: Path, origin: str, today: date | None = None) -> str:
+    """Shared view, this origin's scenario, its card, and conflicts that involve it.
+
+    Card overrides are applied only in this projection. views/shared.md is not rewritten.
+    Due labels and the 待提炼 list are printed. Nothing is retracted.
+    """
+    repo = Path(repo)
+    origin = safe_origin(origin)
+    body = projection_body(repo, origin, today=today).rstrip("\n")
+    return _ensure_nl(f"# 开工读取（{origin})\n\n{body}")

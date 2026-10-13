@@ -12,14 +12,14 @@ from topmind_handoff.package import render_package
 
 USAGE = """\
 用法：
-  python3 scripts/compile_memory.py <记忆目录>
+  python3 scripts/compile_memory.py <记忆目录> [--today YYYY-MM-DD]
   python3 scripts/compile_memory.py --check <记忆目录>
   python3 scripts/compile_memory.py --init <目录> --private --origin <origin_id> [--role 场景] [--today YYYY-MM-DD]
   python3 scripts/compile_memory.py --init <目录> --public --origin <origin_id>
   python3 scripts/compile_memory.py --organize <记忆目录> [--today YYYY-MM-DD]
-  python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> [--out 文件]
+  python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> [--out 文件] [--today YYYY-MM-DD]
   python3 scripts/compile_memory.py --own <记忆目录> --scenario <场景> --origin <origin_id>
-  python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
+  python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> [--today YYYY-MM-DD]
 """
 
 
@@ -48,9 +48,7 @@ def main(argv: list[str]) -> int:
     if argv[0].startswith("--"):
         print(USAGE)
         return 2
-    compile_repo(Path(argv[0]))
-    print(f"compiled {argv[0]}")
-    return 0
+    return _compile(argv)
 
 
 def _init(argv: list[str]) -> int:
@@ -78,6 +76,17 @@ def _init(argv: list[str]) -> int:
     return 0
 
 
+def _compile(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("path")
+    parser.add_argument("--today")
+    args = parser.parse_args(argv)
+    today = _day(args.today) if args.today else None
+    compile_repo(Path(args.path), today)
+    print(f"compiled {args.path}")
+    return 0
+
+
 def _organize(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("path")
@@ -94,9 +103,11 @@ def _render(argv: list[str]) -> int:
     parser.add_argument("path")
     parser.add_argument("--origin", required=True)
     parser.add_argument("--out")
+    parser.add_argument("--today")
     args = parser.parse_args(argv)
+    today = _day(args.today) if args.today else None
     try:
-        text = render_package(Path(args.path), args.origin)
+        text = render_package(Path(args.path), args.origin, today=today)
     except ValueError as exc:
         print(str(exc))
         return 1
@@ -127,9 +138,11 @@ def _startup(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("path")
     parser.add_argument("--origin", required=True)
+    parser.add_argument("--today")
     args = parser.parse_args(argv)
+    today = _day(args.today) if args.today else None
     try:
-        print(startup_read(Path(args.path), args.origin), end="")
+        print(startup_read(Path(args.path), args.origin, today=today), end="")
     except ValueError as exc:
         print(str(exc))
         return 1

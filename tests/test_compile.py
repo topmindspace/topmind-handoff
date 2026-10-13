@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from topmind_handoff.compile import (  # noqa: E402
+    append_outbox,
     compile_repo,
     save_environment_card,
     startup_read,
@@ -793,6 +794,140 @@ refreshed: 2026-10-12
             self.assertNotIn("LEAKED_SCENARIO", followed)
         finally:
             outside.unlink(missing_ok=True)
+
+    def test_unknown_slice_stays_out_of_fact_and_compile_continues(self) -> None:
+        write(
+            self.root,
+            "outbox/Grok-demo-sync.md",
+            """\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: env-push
+  scope: origin:Grok-demo-sync
+  slice: environment
+  base: none
+  at: 2026-10-13
+  text: 环境步骤只在本环境
+- op_id: Grok-demo-sync#2
+  op: set
+  id: odd-left
+  scope: shared
+  slice: not-a-slice
+  base: none
+  at: 2020-01-01
+  text: 左怪
+- op_id: Grok-demo-sync#5
+  op: set
+  id: odd-kept
+  scope: shared
+  slice: not-a-slice
+  base: none
+  at: 2026-10-13
+  text: 怪维度单独成节
+- op_id: Grok-demo-sync#3
+  op: set
+  id: fact-later
+  scope: shared
+  slice: fact
+  base: none
+  at: 2026-10-13
+  text: 后面的事实
+- op_id: Grok-demo-sync#4
+  op: set
+  id: env-bad
+  scope: shared
+  slice: ../evil
+  base: none
+  at: 2026-10-13
+  text: 越界维度
+""",
+        )
+        write(
+            self.root,
+            "outbox/ClaudeCode-demo-sync.md",
+            """\
+- op_id: ClaudeCode-demo-sync#1
+  op: set
+  id: odd-left
+  scope: shared
+  slice: not-a-slice
+  base: none
+  at: 2026-12-01
+  text: 右怪
+""",
+        )
+        write(self.root, "outbox/Other-demo.md", "# outbox Other-demo\n- 别人的原文\n")
+        foreign = (self.root / "outbox" / "Other-demo.md").read_bytes()
+        parsed = parse_outbox(
+            (self.root / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"),
+            "Grok-demo-sync",
+        )
+        self.assertEqual(parsed[0].slice, "environment")
+        self.assertEqual(parsed[1].slice, "not-a-slice")
+        self.assertEqual(parsed[2].slice, "not-a-slice")
+        compile_repo(self.root)
+        self.assertEqual((self.root / "outbox" / "Other-demo.md").read_bytes(), foreign)
+        self.assertFalse((self.root / "evil.md").exists())
+        self.assertFalse((self.root.parent / "evil.md").exists())
+        shared = (self.root / "views" / "shared.md").read_text(encoding="utf-8")
+        fact = _section(shared, "## 事实")
+        self.assertIn("后面的事实", fact)
+        self.assertNotIn("环境步骤只在本环境", shared)
+        self.assertNotIn("左怪", fact)
+        self.assertNotIn("右怪", fact)
+        self.assertNotIn("越界维度", fact)
+        self.assertNotIn("怪维度单独成节", fact)
+        odd = _section(shared, "## 维度：not-a-slice")
+        self.assertIn("怪维度单独成节", odd)
+        self.assertNotIn("左怪", odd)
+        self.assertIn("未裁决", shared)
+        self.assertIn("左怪", shared)
+        self.assertIn("右怪", shared)
+        later = (self.root / "outbox" / "ClaudeCode-demo-sync.md").read_text(encoding="utf-8")
+        later = later.replace("at: 2026-12-01", "at: 2099-01-01")
+        write(self.root, "outbox/ClaudeCode-demo-sync.md", later)
+        compile_repo(self.root)
+        again = (self.root / "views" / "shared.md").read_text(encoding="utf-8")
+        self.assertIn("左怪", again)
+        self.assertIn("右怪", again)
+        self.assertIn("未裁决", _section(again, "## 冲突"))
+        try:
+            append_outbox(self.root, "Grok-demo-sync", "Other-demo", ["- op_id: Grok-demo-sync#9\n"])
+        except PermissionError:
+            refused = True
+        else:
+            refused = False
+        self.assertTrue(refused)
+        self.assertEqual((self.root / "outbox" / "Other-demo.md").read_bytes(), foreign)
+        started = startup_read(self.root, "Grok-demo-sync")
+        self.assertIn("环境步骤只在本环境", started)
+        self.assertNotIn("事实", _heading_above(started, "环境步骤只在本环境"))
+        self.assertNotIn("环境步骤只在本环境", (self.root / "views" / "shared.md").read_text(encoding="utf-8"))
+
+
+def _section(text: str, heading: str) -> str:
+    lines = text.splitlines()
+    collecting = False
+    found: list[str] = []
+    for line in lines:
+        if line == heading and not collecting:
+            collecting = True
+            continue
+        if collecting and line.startswith("#"):
+            break
+        if collecting:
+            found.append(line)
+    return "\n".join(found)
+
+
+def _heading_above(text: str, sentence: str) -> str:
+    previous = ""
+    for line in text.splitlines():
+        if line.startswith("#"):
+            previous = line
+        if sentence in line:
+            return previous
+    return ""
 
 
 if __name__ == "__main__":

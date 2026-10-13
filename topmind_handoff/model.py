@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -21,9 +23,41 @@ REVIEW_DAYS = {
     "boundaries": 180,
     "preference": 90,
     "project": 30,
+    "fact": 30,
 }
+CARD_STALE_DAYS = 90
 INDEX_LINE_BUDGET = 200
 INDEX_BYTE_BUDGET = 25 * 1024
+
+
+def parse_day(value: str) -> date | None:
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def review_suffix(op: Op, today: date | None) -> str:
+    """Label a current head from its own `at`. The date never picks a chain head."""
+    if today is None:
+        return ""
+    limit = REVIEW_DAYS.get(op.slice)
+    written = parse_day(op.at)
+    if limit is None or written is None:
+        return ""
+    if (today - written).days >= limit:
+        return " （未复核）"
+    return ""
+
+
+def slice_title(name: str) -> str:
+    """Known slices keep their Chinese headings. Anything else stays its own section."""
+    return SLICE_TITLE.get(name, f"维度：{name}")
+
+
+def view_slice_order(present: Iterable[str]) -> list[str]:
+    extras = sorted({name for name in present if name not in SLICES})
+    return list(SLICES) + extras
 
 
 def compiler_version() -> str:
@@ -162,9 +196,9 @@ def parse_outbox(text: str, origin: str) -> list[Op]:
         base_raw = fields.get("base", "none").strip() or "none"
         kind = fields.get("op", "set").strip() or "set"
         scope = fields.get("scope", "shared").strip() or "shared"
+        # Missing slice stays fact. An unknown value, including `environment`, is kept.
+        # Coercing it would hide the row under 事实 and a typo must not abort the ledger.
         slice_name = fields.get("slice", "fact").strip() or "fact"
-        if slice_name not in SLICES:
-            slice_name = "fact"
         ops.append(
             Op(
                 op_id=op_id,

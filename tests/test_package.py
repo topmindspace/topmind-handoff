@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from topmind_handoff.compile import startup_read  # noqa: E402
 from topmind_handoff.package import (  # noqa: E402
     APPENDIX_MARK,
     PACKAGE_VERSION,
@@ -515,6 +518,163 @@ refreshed: 2026-10-13
             applied = apply_legacy_plan(plan, local, confirmed=True)
             self.assertNotIn("boundaries.ledger", applied["claims"])
             self.assertEqual(applied["claims"].get("pref-zh"), "全程中文")
+
+    def test_package_is_the_startup_projection_for_one_origin(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            today = date(2026, 10, 13)
+            aged = (today - timedelta(days=30)).isoformat()
+            write(root, "authority.md", AUTHORITY)
+            write(
+                root,
+                "outbox/Grok-demo-sync.md",
+                f"""\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: fact-due
+  scope: shared
+  slice: fact
+  base: none
+  at: {aged}
+  text: 共享原句
+  detail: |
+    原始细节不要出现
+- op_id: Grok-demo-sync#2
+  op: set
+  id: scene-w
+  scope: scenario:writing
+  base: none
+  at: {today.isoformat()}
+  text: 写作场景独有句
+- op_id: Grok-demo-sync#3
+  op: set
+  id: env-push
+  scope: origin:Grok-demo-sync
+  slice: environment
+  base: none
+  at: {today.isoformat()}
+  text: 环境步骤只在本环境
+- op_id: Grok-demo-sync#4
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: none
+  at: {today.isoformat()}
+  text: 深色方案
+""",
+            )
+            write(
+                root,
+                "outbox/ClaudeCode-demo-sync.md",
+                f"""\
+- op_id: ClaudeCode-demo-sync#1
+  op: set
+  id: scene-c
+  scope: scenario:coding
+  base: none
+  at: {today.isoformat()}
+  text: 编程场景独有句
+- op_id: ClaudeCode-demo-sync#2
+  op: set
+  id: pref-theme
+  scope: shared
+  slice: preference
+  base: none
+  at: {today.isoformat()}
+  text: 浅色方案
+""",
+            )
+            write(
+                root,
+                "environments/Grok-demo-sync.md",
+                f"""\
+---
+origin: Grok-demo-sync
+role: writing
+refreshed: {today.isoformat()}
+override.fact-due: 覆盖句只在本环境
+---
+
+卡片标记甲
+""",
+            )
+            before = startup_read(root, "Grok-demo-sync", today=today)
+            first = render_package(root, "Grok-demo-sync", today=today)
+            second = render_package(root, "Grok-demo-sync", today=today)
+            after = startup_read(root, "Grok-demo-sync", today=today)
+            self.assertEqual(first, second)
+            self.assertEqual(before, after)
+            body = before.split("\n\n", 1)[1]
+            self.assertIn(body.rstrip("\n"), first)
+            package_body, appendix = first.split("## 10. 操作附录（已反映在上文视图中）", 1)
+            self.assertEqual(appendix.strip().splitlines()[0], APPENDIX_MARK)
+            self.assertIn('handoff_version: "2"', first)
+            self.assertIn("覆盖句只在本环境", package_body)
+            self.assertIn("（未复核）", package_body)
+            self.assertNotIn("共享原句", package_body)
+            self.assertNotIn("原始细节不要出现", package_body)
+            self.assertIn("写作场景独有句", package_body)
+            self.assertNotIn("编程场景独有句", first)
+            self.assertIn("环境步骤只在本环境", package_body)
+            self.assertNotIn("事实", _heading_above(package_body, "环境步骤只在本环境"))
+            self.assertIn("浅色方案", package_body)
+            self.assertIn("深色方案", package_body)
+            self.assertIn("未裁决", package_body)
+            self.assertNotIn("卡片标记甲", package_body.split("## 环境卡片", 1)[0])
+            self.assertIn("卡片标记甲", package_body)
+            self.assertIsNone(
+                re.search(r"sk-[A-Za-z0-9_-]{10,}|ghp_[A-Za-z0-9]{20,}|password:", first)
+            )
+            self.assertIn("Grok-demo-sync#3", appendix)
+
+    def test_missing_version_or_appendix_writes_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            write(dest, "authority.md", AUTHORITY)
+            existing = "# outbox Grok-demo-sync\n"
+            write(dest, "outbox/Grok-demo-sync.md", existing)
+            missing_version = """\
+---
+origin_id: Grok-demo-sync
+---
+
+```ops
+- op_id: Grok-demo-sync#9
+  op: set
+  id: fact-z
+  scope: shared
+  base: none
+  at: 2026-10-13
+  text: 不该写入
+```
+"""
+            no_appendix = f"""\
+---
+handoff_version: "{PACKAGE_VERSION}"
+origin_id: Grok-demo-sync
+---
+
+## 5. 事实与记忆（Facts & memories）
+
+- 不该写入 {{id:fact-z}}
+"""
+            for package in (missing_version, no_appendix):
+                with self.assertRaises(ValueError):
+                    replay_package(dest, package, confirmed=True)
+                self.assertEqual((dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"), existing)
+                self.assertFalse((dest / "views").exists())
+                self.assertNotIn("不该写入", (dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"))
+
+
+def _heading_above(text: str, sentence: str) -> str:
+    previous = ""
+    for line in text.splitlines():
+        if line.startswith("#"):
+            previous = line
+        if sentence in line:
+            return previous
+    return ""
 
 
 if __name__ == "__main__":

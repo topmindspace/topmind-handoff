@@ -42,3 +42,23 @@ class SkillRouteTests(unittest.TestCase):
         self.assertIn("「这台以写作为主」「这台以某场景为主」只跑 `--own`", section)
         self.assertNotIn("--sync", USAGE)
         self.assertNotIn("--render-legacy", USAGE)
+        for phrase in (
+            "称呼、对本智能体的称呼、语言、时区",
+            "边界的主人也是 human",
+            "scope: shared",
+            "scope: scenario:",
+            "scope: origin:",
+            "不写成共享事实",
+            "不另起一条 id",
+            "聊天记录",
+            "不改别人的信箱",
+        ):
+            self.assertIn(phrase, skill)
+        self.assertIn("待提炼", section)
+        self.assertIn("把这份清单给用户看", section)
+        self.assertIn("不自动撤回", section)
+        self.assertIn("不跑 `--organize`", section)
+        self.assertIn("「整理云端记忆」只整理", section)
+        self.assertIn("用户说「整理云端记忆」才跑 `--organize`", skill)
+        self.assertIn("没有定时任务，没有常驻进程", skill)
+        self.assertNotIn("cron", skill.lower())

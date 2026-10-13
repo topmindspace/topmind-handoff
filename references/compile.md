@@ -35,9 +35,11 @@ Git 合并若在 `views/` 或 `STATUS.md` 上冲突：两边的视图都丢掉�
 |---|---|---|
 | `shared` | 因果链上的 `set` / `retract` | 不同 id 都留下；同一 id 分叉就冲突 |
 | `scenario:<名>` | 该场景的主环境，以及 `human` | 场景文件互不合并 |
-| `origin:<origin_id>` | 该环境自己的操作 | 只出现在该环境的开工读取里 |
+| `origin:<origin_id>` | 该环境自己的操作 | 只出现在该环境的开工读取和交接包里，不进共享视图 |
 
-身份（`slice: identity`）和边界（`slice: boundaries`）只接受 `outbox/human.md` 里的操作。别的环境写了 `set`，也只记成提议，不进共享视图。
+画像锚点是称呼、对本智能体的称呼、语言、时区，写成 `slice: identity`。边界写成 `slice: boundaries`。这两类只接受 `outbox/human.md`。别的环境写了 `set`，也只记成提议，不进共享视图。
+跨工具都适用的偏好用 `scope: shared`。只在某个场景成立的习惯用 `scenario:`，不写入 shared。必须跟着这台机器走的步骤和未做完的事用 `origin:`。技能版本和连接器写在环境卡片上，不写成共享事实。
+改一条已有主题时沿用原来的 id，`base` 填当前链头，不另起一条 id。
 场景在 `authority.md` 里有主人时，主人以外、且不是 `human` 的 `set` / `retract` 同样只记成提议。`op: propose` 永远不成为链头。
 
 `authority.md` 的身份和边界固定是 `human`。把某台设成场景主人：
@@ -72,7 +74,8 @@ python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --orig
 ```
 
 - `op`：`set`、`retract`、`propose`。
-- `base`：接着哪一条。新链写 `none`。
+- `slice`：`identity`、`boundaries`、`preference`、`project`、`fact`。别的值（包括已经在用的 `environment`）保持原样，视图里单独成节，不并进事实。写错也不中断其余条目。
+- `base`：接着哪一条。新链写 `none`。改已有主题就填当前链头，不另起 id。
 - `closes`：裁决时填当前全部链头的 `op_id`。集合刚好相等，这条成为唯一链头。多出来或少一条，这条不生效，冲突还在。
 - `at`：给人看，也给定复核期用。它不挑选链头。
 - 同一个 `op_id` 出现几次只计第一次。
@@ -88,9 +91,12 @@ python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --orig
 python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 ```
 
-这条命令只打印投影，不改仓库里的文件。投影包含共享视图、本环境卡片 `role` 对应的那一个场景、该环境卡片、与本环境有关的冲突。
-`scope: origin:<本环境>` 里已经生效的条目只附在这次输出，不进共享视图和场景视图。别的环境写这个范围，只记成提议。
+这条命令只打印投影，不改仓库里的文件。可以加 `--today YYYY-MM-DD`。投影包含共享视图、本环境卡片 `role` 对应的那一个场景、该环境卡片、与本环境有关的冲突、到期的「未复核」和「待提炼」。
+`scope: origin:<本环境>` 里已经生效的条目按 slice 附在这次输出，不进共享视图和场景视图。`environment` 不会出现在「事实」下面。别的环境写这个范围，只记成提议。
 其他场景和其他环境的任务不放进这次上下文。覆盖规则见上面。
+`--render` 使用同一份投影，再附上该环境的操作附录。渲染两次，正文相同。
+
+待提炼只列三件事：当前说法的正文引用了另一条当前 id、slice 不属于上面五类、环境卡片满 90 天未刷新。清单不撤回这些说法，也不改信箱。清理要人确认后，用同一 id 追加 `set` 或 `retract`。
 
 ## 整理
 
@@ -101,9 +107,11 @@ python3 scripts/compile_memory.py --organize <记忆目录> --today YYYY-MM-DD
 ```
 
 - 事实索引压到约 200 行或 25KB 以内。长说明移到 `facts/`，索引留一行。收起某一类时，没有长说明的短行也写进同一个 `facts/` 文件。
-- 身份和边界满 180 天、偏好满 90 天、项目状态满 30 天，标「未复核」。未复核仍然有效。
+- 身份和边界满 180 天、偏好满 90 天、项目和事实满 30 天，标「未复核」。未复核仍然是当前说法。日子更短的不标。
+- 标记按 `at` 和这次的 `--today` 在渲染时计算，并写入 `STATUS.md` 的 `review_as_of`。之后不带日期的编译沿用这一天，不会把标记擦掉。`at` 仍然不挑选链头。
+- 同一次整理列出上面的待提炼。不撤回，不改写被点名的说法。
 - 环境卡片的 `refreshed` 满 90 天，标「未刷新」，文件保留。
-- 信箱不改写。不折叠历史，除非用户另说一句要归档。
+- 信箱不改写。不折叠历史，除非用户另说一句要归档。没有定时任务，没有常驻进程。
 
 ## 同一次更新里有什么
 

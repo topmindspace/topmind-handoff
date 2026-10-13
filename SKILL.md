@@ -17,7 +17,7 @@ compatibility: >-
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.6.0"
+  version: "0.6.1"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
   updated: "2026-10-13"
@@ -57,7 +57,20 @@ python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> -
 python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 ```
 
+`--startup` 和 `--render` 可以加 `--today YYYY-MM-DD`。未复核按这个日期和 `at` 计算。不写时沿用 `STATUS.md` 里的 `review_as_of`。这个日期不挑选链头。
+
 `--check` 非 0 表示 `STATUS.md` 的信箱末尾对不上，先重新编译再把视图当事实。
+
+## 写入什么
+
+- 画像锚点是称呼、对本智能体的称呼、语言、时区。它们是身份，主人是 human。
+- 边界的主人也是 human。别的环境写了，只记成提议。
+- 跨工具都适用的偏好写入 `scope: shared`。
+- 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。
+- 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。
+- `slice` 用 identity、boundaries、preference、project、fact。已经在用的 `environment` 和其他值都保持原样，单独成节，不并进事实。
+- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。
+- 不写密码、API key、token、聊天记录，不改别人的信箱。
 
 ## 工作流
 
@@ -71,6 +84,8 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 1. 先做下面的「按云端记忆接手」。确认后才写入本工具。不覆盖已有正文和已有锚点。覆盖项不写回共享信箱。不改别人的信箱。
 2. 再做「更新云端记忆」。只追加本环境信箱，或只替换本环境卡片。刚从附录重放过的 `op_id` 不再追加。没有新操作就不提交、不推送。用户说「只本地」则编译可以做，不推送。
+
+开工读取会带上到期的「未复核」和「待提炼」。把这份清单给用户看。这一轮不跑 `--organize`，不跑 `--init`，不自动撤回。
 
 还没有私有仓库：问一次要不要「初始化 handoff」。不静默创建，不向用户要 token。
 
@@ -110,11 +125,11 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 ### 给我一份交接包
 
-不需要网络。`--render` 用本机仓库渲染。包里是视图、本环境卡片、本环境操作附录。附录已反映在视图里，接收方不要把它再导入成新事实。
+不需要网络。`--render` 用和 `--startup` 同一份本环境投影：带覆盖的共享视图、卡片 `role` 的一个场景、本环境范围、与本环境有关的冲突、到期的未复核、环境卡片。别的场景不放进去。附录已反映在视图里，接收方不要把它再导入成新事实。
 
 ### 整理云端记忆
 
-用户说「整理云端记忆」才跑 `--organize`。压索引、标未复核、标未刷新。不改信箱，不另开进程。
+用户说「整理云端记忆」才跑 `--organize`。压索引、标未复核、标未刷新，并列出待提炼。不改信箱，不撤回，不另开进程。没有定时任务，没有常驻进程。记忆仓库不加 CI，不做 Release。
 「把笔记整理一下」不是这句，交给 topmind-organize。
 
 ### 这台以某场景为主

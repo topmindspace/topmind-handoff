@@ -536,6 +536,175 @@ override.pref-theme: 覆盖句
                 self.assertFalse((base / "escaped.md").exists())
                 self.assertEqual(list(repo.rglob("*.md")), [repo / "authority.md"])
 
+    def test_fact_review_survives_compile_and_refinement_does_not_retract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            today = date(2026, 10, 13)
+            write(
+                root,
+                "authority.md",
+                """\
+- scope: shared.identity
+  owner: human
+- scope: shared.boundaries
+  owner: human
+""",
+            )
+            old = (today - timedelta(days=30)).isoformat()
+            young = (today - timedelta(days=29)).isoformat()
+            identity_old = (today - timedelta(days=180)).isoformat()
+            preference_old = (today - timedelta(days=90)).isoformat()
+            project_young = (today - timedelta(days=29)).isoformat()
+            write(
+                root,
+                "outbox/human.md",
+                f"""\
+- op_id: human#1
+  op: set
+  id: identity.name
+  scope: shared
+  slice: identity
+  base: none
+  at: {identity_old}
+  text: 称呼示例
+- op_id: human#2
+  op: set
+  id: boundaries.note
+  scope: shared
+  slice: boundaries
+  base: none
+  at: {identity_old}
+  text: 边界旧例
+- op_id: human#3
+  op: set
+  id: pref-old
+  scope: shared
+  slice: preference
+  base: none
+  at: {preference_old}
+  text: 偏好旧例
+- op_id: human#4
+  op: set
+  id: project-new
+  scope: shared
+  slice: project
+  base: none
+  at: {project_young}
+  text: 项目新例
+""",
+            )
+            write(
+                root,
+                "outbox/Grok-demo-sync.md",
+                f"""\
+- op_id: Grok-demo-sync#1
+  op: set
+  id: fact-old
+  scope: shared
+  slice: fact
+  base: none
+  at: {old}
+  text: 旧事实
+- op_id: Grok-demo-sync#2
+  op: set
+  id: fact-young
+  scope: shared
+  slice: fact
+  base: none
+  at: {young}
+  text: 年轻事实
+- op_id: Grok-demo-sync#3
+  op: set
+  id: fact-cloud
+  scope: shared
+  slice: fact
+  base: none
+  at: {young}
+  text: 两个来源
+- op_id: Grok-demo-sync#4
+  op: set
+  id: fact-join
+  scope: shared
+  slice: fact
+  base: none
+  at: {young}
+  text: 本机已补上 fact-cloud
+""",
+            )
+            write(
+                root,
+                "environments/Aged-demo-sync.md",
+                f"""\
+---
+origin: Aged-demo-sync
+role: writing
+refreshed: {(today - timedelta(days=90)).isoformat()}
+---
+
+路径：~/aged
+""",
+            )
+            write(
+                root,
+                "environments/Fresh-demo-sync.md",
+                f"""\
+---
+origin: Fresh-demo-sync
+role: writing
+refreshed: {(today - timedelta(days=89)).isoformat()}
+---
+
+路径：~/fresh
+""",
+            )
+            before = {
+                path.name: path.read_bytes()
+                for path in sorted((root / "outbox").glob("*.md"))
+            }
+            compile_repo(root, today)
+            shared = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertIn("- 旧事实 {id:fact-old} （未复核）", shared)
+            self.assertIn("- 年轻事实 {id:fact-young}", shared)
+            self.assertNotIn("- 年轻事实 {id:fact-young} （未复核）", shared)
+            self.assertIn("- 称呼示例 {id:identity.name} （未复核）", shared)
+            self.assertIn("- 边界旧例 {id:boundaries.note} （未复核）", shared)
+            self.assertIn("- 偏好旧例 {id:pref-old} （未复核）", shared)
+            self.assertNotIn("- 项目新例 {id:project-new} （未复核）", shared)
+            compile_repo(root)
+            self.assertEqual((root / "views" / "shared.md").read_text(encoding="utf-8"), shared)
+            started = startup_read(root, "Grok-demo-sync", today=today)
+            self.assertIn("- 旧事实 {id:fact-old} （未复核）", started)
+            self.assertNotIn("- 年轻事实 {id:fact-young} （未复核）", started)
+            self.assertIn("引用 `fact-join` 提到当前说法 `fact-cloud`。不撤回，不改写。", started)
+            self.assertIn("两个来源", started)
+            self.assertIn("本机已补上 fact-cloud", started)
+            organize_repo(root, today)
+            after = {
+                path.name: path.read_bytes()
+                for path in sorted((root / "outbox").glob("*.md"))
+            }
+            self.assertEqual(before, after)
+            organized = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertIn("- 旧事实 {id:fact-old} （未复核）", organized)
+            self.assertIn("本机已补上 fact-cloud", organized)
+            self.assertNotIn("已撤回", organized)
+            status = (root / "STATUS.md").read_text(encoding="utf-8")
+            self.assertIn("引用 `fact-join` 提到当前说法 `fact-cloud`。不撤回，不改写。", status)
+            self.assertIn("环境卡片 `Aged-demo-sync` 未刷新。", status)
+            self.assertNotIn("环境卡片 `Fresh-demo-sync` 未刷新。", status)
+            self.assertIn("未刷新", (root / "environments" / "Aged-demo-sync.md").read_text(encoding="utf-8"))
+            self.assertTrue((root / "environments" / "Aged-demo-sync.md").is_file())
+            self.assertNotIn("未刷新", (root / "environments" / "Fresh-demo-sync.md").read_text(encoding="utf-8"))
+            compile_repo(root)
+            kept = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertIn("- 旧事实 {id:fact-old} （未复核）", kept)
+            self.assertNotIn("- 年轻事实 {id:fact-young} （未复核）", kept)
+            self.assertIn("本机已补上 fact-cloud", kept)
+            again = startup_read(root, "Grok-demo-sync", today=today)
+            self.assertIn("- 旧事实 {id:fact-old} （未复核）", again)
+            self.assertIn("引用 `fact-join` 提到当前说法 `fact-cloud`。不撤回，不改写。", again)
+            self.assertEqual(before, {path.name: path.read_bytes() for path in (root / "outbox").glob("*.md")})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 from copy import deepcopy
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
-from topmind_handoff.compile import append_outbox, compile_repo
-from topmind_handoff.model import ROOT, compiler_version, origin_markdown, parse_outbox, safe_origin, scenario_filename
+from topmind_handoff.compile import append_outbox, compile_repo, projection_body
+from topmind_handoff.model import ROOT, compiler_version, origin_markdown, parse_outbox, safe_origin
 
 APPENDIX_MARK = "本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。"
 ANCHOR_FIELDS = ("对本智能体的称呼", "称呼", "语言", "时区")
@@ -38,20 +39,12 @@ def _front(text: str) -> dict[str, str]:
     return found
 
 
-def render_package(repo: Path, origin: str) -> str:
-    """Compile, then render one offline package from the views and this origin's outbox."""
+def render_package(repo: Path, origin: str, today: date | None = None) -> str:
+    """Compile, then render the same origin projection startup prints, plus the ledger."""
     repo = Path(repo)
     origin = safe_origin(origin)
-    compile_repo(repo)
-    shared = (repo / "views" / "shared.md").read_text(encoding="utf-8")
-    card_path = origin_markdown(repo / "environments", origin)
-    card = card_path.read_text(encoding="utf-8") if card_path.is_file() else "（无）\n"
-    role = _front(card).get("role", "")
-    filename = scenario_filename(role) if role else None
-    scenario_path = repo / "views" / filename if filename else None
-    if scenario_path is not None and scenario_path.resolve().parent != (repo / "views").resolve():
-        scenario_path = None
-    scenario = scenario_path.read_text(encoding="utf-8") if scenario_path and scenario_path.is_file() else "（无）\n"
+    compile_repo(repo, today=today)
+    body = projection_body(repo, origin, today=today).rstrip("\n")
     outbox_path = origin_markdown(repo / "outbox", origin)
     ops_text = outbox_path.read_text(encoding="utf-8") if outbox_path.is_file() else ""
     op_blocks = [op.raw.rstrip("\n") for op in parse_outbox(ops_text, origin)]
@@ -70,15 +63,7 @@ def render_package(repo: Path, origin: str) -> str:
         "",
         "# 交接包",
         "",
-        "## 视图",
-        "",
-        shared.rstrip("\n"),
-        "",
-        scenario.rstrip("\n"),
-        "",
-        "## 环境卡片",
-        "",
-        card.rstrip("\n"),
+        body,
         "",
         "## 10. 操作附录（已反映在上文视图中）",
         "",

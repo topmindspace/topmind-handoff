@@ -5,7 +5,12 @@
 ## 更新云端记忆
 
 1. 在记忆仓库里拉取。
-2. 采集本环境看得到的持久偏好、场景习惯和这台的环境事实。一次闲聊不进信箱。重复出现的偏好才追加。
+2. 按类别写入。一次闲聊不进信箱。重复出现、会跨工具用的偏好才追加。
+   称呼、对本智能体的称呼、语言、时区是身份锚点，只由 human 写。边界也只由 human 写。
+   跨工具偏好用 `scope: shared`。场景习惯用 `scope: scenario:<场景>`，不写进 shared。
+   这台的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在环境卡片上，不写成共享事实。
+   改已有主题沿用原来的 id，`base` 填当前链头，不另起一条 id。
+   不写密码、API key、token、聊天记录，不改别人的信箱。
 3. 知道才写。没有来源就标在 `text` 里「未核实」，不编造 `op_id` 以外的内容。`op_id` 用 `<origin_id>#` 加本文件内递增的号，不和已有号重复。
 4. 只追加 `outbox/<自己的 origin_id>.md`。要改这台的路径、连接器、已装技能或覆盖项，就整文件替换 `environments/<自己的 origin_id>.md`，并更新 `refreshed`。
 5. 运行 `python3 scripts/compile_memory.py <记忆目录>`。`--check` 必须通过。
@@ -33,7 +38,7 @@ python3 scripts/compile_memory.py --init <空目录> --private --origin <origin_
 python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> --out <称呼>-handoff-YYYYMMDD.md
 ```
 
-包是 `handoff_version: "2"`。正文是共享视图、本场景视图、本环境卡片，以及 `## 10` 操作附录。
+包是 `handoff_version: "2"`。正文和 `--startup` 是同一份投影：带覆盖的共享视图、一个场景、本环境范围、冲突、未复核、环境卡片，以及 `## 10` 操作附录。
 附录声明这些操作已经反映在视图里。渲染不推送，也不改其他环境的信箱。
 
 交给用户时附上分享警告（`references/privacy.md`）。回执只给路径、冲突条数、附录里的 `op_id` 个数。不复述全文。

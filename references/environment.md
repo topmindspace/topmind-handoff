@@ -18,7 +18,7 @@ override.pref-theme: 本环境用浅色终端
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.6.0（github:topmindspace/topmind-handoff）
+- topmind-handoff 0.6.1（github:topmindspace/topmind-handoff）
 ```
 
 - `role` 决定 `--startup` 带上哪一个场景。规则见 `references/compile.md`。
@@ -29,7 +29,7 @@ override.pref-theme: 本环境用浅色终端
 
 ## 技能清单
 
-已装技能是观察，不是这个人的当前事实。想长期用哪些技能，写成共享或场景里的一条 `set`。
+已装技能和连接器写在这张卡片上，不写成共享事实。想长期用哪些技能，写成共享或场景里的一条 `set`。
 版本从该技能 `SKILL.md` 的 `metadata.version` 读，旧技能可能在顶层 `version`。读不到就写 `unknown`，不编造。
 
 可选字段：
