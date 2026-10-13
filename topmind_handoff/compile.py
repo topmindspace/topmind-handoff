@@ -255,6 +255,10 @@ def compile_repo(repo: Path, today: date | None = None) -> Compiled:
     for name, text in rendered.items():
         (views / name).write_text(text, encoding="utf-8")
     (repo / "STATUS.md").write_text(render_status(compiled, today=today), encoding="utf-8")
+    # Local import: admin imports this module. Only a stock README this skill wrote is replaced.
+    from topmind_handoff.admin import upgrade_stock_readme
+
+    upgrade_stock_readme(repo)
     return compiled
 
 

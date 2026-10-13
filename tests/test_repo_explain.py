@@ -90,6 +90,8 @@ def run_case(dest: Path) -> str:
         "API key",
         "不改别人的信箱",
         "不写成共享事实",
+        "称呼：",
+        "base: none",
     ):
         ok(f"readme explains {phrase}", phrase in readme)
     ok("status says views are compile products", "编译产物" in status and "不是权威" in status)

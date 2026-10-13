@@ -60,4 +60,4 @@ scripts/compile_memory.py
 
 ## 版本
 
-当前技能版本 `0.6.2`，交接包格式 `2`。更新记录见 `CHANGELOG.md`。
+当前技能版本 `0.6.3`，交接包格式 `2`。更新记录见 `CHANGELOG.md`。

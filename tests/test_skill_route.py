@@ -52,6 +52,9 @@ class SkillRouteTests(unittest.TestCase):
             "不另起一条 id",
             "聊天记录",
             "不改别人的信箱",
+            "称呼：",
+            "base: none",
+            "被人改过的说明不覆盖",
         ):
             self.assertIn(phrase, skill)
         self.assertIn("待提炼", section)

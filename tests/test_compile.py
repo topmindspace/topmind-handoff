@@ -904,6 +904,74 @@ refreshed: 2026-10-12
         self.assertNotIn("事实", _heading_above(started, "环境步骤只在本环境"))
         self.assertNotIn("环境步骤只在本环境", (self.root / "views" / "shared.md").read_text(encoding="utf-8"))
 
+    def test_stock_readme_upgrades_and_a_personal_note_stays(self) -> None:
+        from topmind_handoff.admin import KNOWN_STOCK_READMES, memory_readme
+
+        write(self.root, "outbox/Grok-demo-sync.md", "# outbox Grok-demo-sync\n")
+        before = (self.root / "outbox" / "Grok-demo-sync.md").read_bytes()
+        write(self.root, "README.md", KNOWN_STOCK_READMES[0])
+        compile_repo(self.root)
+        readme = (self.root / "README.md").read_text(encoding="utf-8")
+        self.assertEqual(readme, memory_readme())
+        self.assertIn("称呼：", readme)
+        self.assertIn("base: none", readme)
+        self.assertEqual((self.root / "outbox" / "Grok-demo-sync.md").read_bytes(), before)
+        compile_repo(self.root)
+        self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), readme)
+        noted = KNOWN_STOCK_READMES[1] + "人加的一句。\n"
+        write(self.root, "README.md", noted)
+        compile_repo(self.root)
+        self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), noted)
+        self.assertEqual((self.root / "outbox" / "Grok-demo-sync.md").read_bytes(), before)
+
+    def test_scope_move_retracts_the_old_chain(self) -> None:
+        write(
+            self.root,
+            "outbox/Grok-demo-sync.md",
+            """\
+# outbox Grok-demo-sync
+
+- op_id: Grok-demo-sync#1
+  op: set
+  id: habit
+  scope: shared
+  slice: preference
+  base: none
+  at: 2026-10-13
+  text: 写作习惯只在写作
+- op_id: Grok-demo-sync#2
+  op: retract
+  id: habit
+  scope: shared
+  base: Grok-demo-sync#1
+  at: 2026-10-13
+  text: 写作习惯只在写作
+- op_id: Grok-demo-sync#3
+  op: set
+  id: habit
+  scope: scenario:writing
+  base: none
+  at: 2026-10-13
+  text: 写作习惯只在写作
+- op_id: Grok-demo-sync#4
+  op: set
+  id: habit
+  scope: scenario:writing
+  base: Grok-demo-sync#1
+  at: 2026-10-13
+  text: 不该接上旧范围
+""",
+        )
+        compiled = compile_repo(self.root)
+        moved = compiled.claims[("scenario:writing", "habit")]
+        self.assertEqual([op.op_id for op in moved.heads], ["Grok-demo-sync#3"])
+        self.assertEqual([op.op_id for op in moved.unapplied], ["Grok-demo-sync#4"])
+        shared = (self.root / "views" / "shared.md").read_text(encoding="utf-8")
+        writing = (self.root / "views" / "scenario-writing.md").read_text(encoding="utf-8")
+        self.assertNotIn("写作习惯只在写作", shared)
+        self.assertEqual(writing.count("写作习惯只在写作"), 1)
+        self.assertNotIn("不该接上旧范围", writing)
+
 
 def _section(text: str, heading: str) -> str:
     lines = text.splitlines()

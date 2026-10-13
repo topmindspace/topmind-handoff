@@ -17,7 +17,7 @@ compatibility: >-
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.6.2"
+  version: "0.6.3"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
   updated: "2026-10-13"
@@ -63,13 +63,14 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 ## 写入什么
 
-- 画像锚点是称呼、对本智能体的称呼、语言、时区。它们是身份，主人是 human。
+- 画像锚点是称呼、对本智能体的称呼、语言、时区。它们是身份，主人是 human。正文以「称呼：」「对本智能体的称呼：」「语言：」或「时区：」开头。
 - 边界的主人也是 human。别的环境写了，只记成提议。
 - 跨工具都适用的偏好写入 `scope: shared`。
 - 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。
 - 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。
 - `slice` 用 identity、boundaries、preference、project、fact。已经在用的 `environment` 和其他值都保持原样，单独成节，不并进事实。
 - 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。
+- 一条主张要换范围：先在旧范围 `retract`，再在新范围用同一 id 写下，`base: none`。旧范围的 `op_id` 不能当新范围的 `base`。见 `references/compile.md`。
 - 不写密码、API key、token、聊天记录，不改别人的信箱。
 
 ## 工作流
@@ -110,7 +111,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 1. 拉取。
 2. 只往 `outbox/<自己的 origin_id>.md` 追加，或只替换 `environments/<自己的 origin_id>.md`。
-3. 立刻 `python3 scripts/compile_memory.py <记忆目录>`。
+3. 立刻 `python3 scripts/compile_memory.py <记忆目录>`。编译若发现 `README.md` 仍是技能写过的旧模板，就换成当前说明。被人改过的说明不覆盖。这一步不改信箱。
 4. 把新增、冲突、提议列给用户。身份和边界只有人的操作能进视图。
 5. 确认后一个提交：信箱、这台卡片、视图、`STATUS.md`。然后推送。
 
