@@ -3,7 +3,7 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "示例助手 + topmind-handoff 0.6.3"
+compiler: "示例助手 + topmind-handoff 0.6.4"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff
@@ -86,7 +86,7 @@ override.pref-theme: 本环境编辑器用浅色
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.6.3（github:topmindspace/topmind-handoff）：编译记忆并渲染交接包
+- topmind-handoff 0.6.4（github:topmindspace/topmind-handoff）：编译记忆并渲染交接包
 
 ## 10. 操作附录（已反映在上文视图中）
 

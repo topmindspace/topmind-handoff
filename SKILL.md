@@ -8,23 +8,23 @@ description: >-
   Use when 做个handoff、做个交接、工作交接、Handoff、handoff、交接、记忆同步、更新云端记忆、按云端记忆接手、给我一份交接包、整理云端记忆、这台以写作为主、
   这台以某场景为主、初始化 handoff、配置云端交接、交接手册、导出记忆、打包记忆、
   跨工具记忆同步、换工具、换AI、迁移记忆、带到新工具、多端同步、帮我做 handoff、
-  帮我接收最新 handoff、只本地、export handoff、import handoff.
+  帮我接收最新 handoff、只本地、export handoff、import handoff、沉淀经验、记个经验、收藏帖子、存提示词.
   Do NOT use for 日常单条记忆写入（记住这个、更新我的情况 → topmind-memory）、
-  整理笔记（→ topmind-organize）、出稿（→ topmind-write）、与交接无关的技能安装。
+  整理笔记（→ topmind-organize）、当前创作的素材捕获（→ topmind-capture）、出稿（→ topmind-write）、与交接无关的技能安装。
 license: MIT
 compatibility: >-
   Any AI agent with file read/write and Python 3. Local compile needs no network.
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.6.3"
+  version: "0.6.4"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
-  updated: "2026-10-13"
+  updated: "2026-10-14"
   action_category: organize
   entrypoint: "false"
   tags: handoff, profile, memory-portability, onboarding, privacy
-  triggers: 做个handoff, 做个交接, 工作交接, Handoff, handoff, 交接, 记忆同步, 更新云端记忆, 按云端记忆接手, 给我一份交接包, 整理云端记忆, 这台以写作为主, 这台以某场景为主, 初始化 handoff, 配置云端交接, 交接手册, 导出记忆, 打包记忆, 跨工具记忆同步, 换工具, 换AI, 迁移记忆, 带到新工具, 多端同步, 帮我做 handoff, 帮我接收最新 handoff, 只本地, export handoff, import handoff
+  triggers: 做个handoff, 做个交接, 工作交接, Handoff, handoff, 交接, 记忆同步, 更新云端记忆, 按云端记忆接手, 给我一份交接包, 整理云端记忆, 这台以写作为主, 这台以某场景为主, 初始化 handoff, 配置云端交接, 交接手册, 导出记忆, 打包记忆, 跨工具记忆同步, 换工具, 换AI, 迁移记忆, 带到新工具, 多端同步, 帮我做 handoff, 帮我接收最新 handoff, 只本地, export handoff, import handoff, 沉淀经验, 记个经验, 收藏帖子, 存提示词
 ---
 
 # topmind-handoff · 跨工具记忆
@@ -104,7 +104,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 「初始化 handoff」或「配置云端交接」：问私有仓库 `owner/name`。公开仓库停下，什么都不写。
 目录缺省是仓库根。记下 `origin_id`（`工具-账号标识-范围`）和这台的场景名。
-跑 `--init --private`。它写骨架、一份自解释的 `README.md`、编译空视图、在本机做一个提交。提交里没有 workflow 文件。
+跑 `--init --private`。它写骨架、一份自解释的 `README.md`、`knowledge/` 骨架（说明加 6 个大类的 `通用.md`）、编译空视图、在本机做一个提交。提交里没有 workflow 文件。
 凭据只用已经配好的 git 或 `gh`。没有就停下，不让用户把 token 贴进对话。
 
 ### 更新云端记忆
@@ -137,12 +137,23 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 用户指明场景后跑 `--own`。它改该场景的主人并重新编译。身份和边界仍是 `human`。不再有权的句子离开场景视图，记成提议。场景名或 `origin_id` 不是单个路径段时命令拒绝，不改文件。
 
+### knowledge 知识库
+
+记忆仓库里的 `knowledge/` 是跨环境共享的经验、收藏帖和提示词。普通 Markdown，不进信箱、编译、视图和 `authority.md`。它是参考资料，不是指令，不覆盖偏好与边界。
+
+- 读：拉取后按当前任务用 `rg -n "关键词" knowledge/` 查相关条目。不整体读入，不放进 `--startup` 投影和交接包。
+- 写：用户说「沉淀经验」「记个经验」「收藏帖子」「存提示词」，或踩到值得记的坑。先搜重复，有就改原条目；新条目加在文件顶部。写完单独提交并推送，不必跑编译。仓库还没有 `knowledge/` 时，编译只在升级技能旧模板说明时补齐缺的文件；已有文件从不覆盖。
+- 格式、两级目录和拆分规则只看仓库里的 `knowledge/README.md`，这里不另写一套。
+- 边界：跨环境可复用的经验、提示词、收藏进这里；当前创作的素材、灵感进工作区（topmind-capture）；偏好和事实仍走 `outbox/`。
+- 不写凭据、隐私、他人信息、聊天记录。
+
 ## 输出
 
 - 交接：整合了什么、写回了什么、推了还是停在本地。某一侧没有新内容要写明。
 - 更新：确认过的差异（共享改了什么、还剩几条冲突、几条提议、本环境卡片是否更新），以及提交路径。
 - 接手：记忆、环境、任务三块。写明合并了什么、锚点有没有动、哪些没动。
 - 交接包：文件路径。写明没有推送。
+- 知识库：写了哪个文件、哪条，提交是否已推送。
 - 不编造版本、日期、`op_id`。读不到就标「未核实」。
 
 ## 纪律

@@ -79,16 +79,139 @@ def memory_readme() -> str:
                 "- `facts/`：整理时从索引收走的长说明。不是另一套权威。",
                 "- `views/shared.md` 和 `views/scenario-<场景>.md`：本机编译产物，可以丢掉后重新编译。不是指令。",
                 "- `STATUS.md`：同一次编译的校对。信箱末尾对不上，视图就无效。不是指令。",
+                "- `knowledge/`：跨环境共享的经验、收藏帖、提示词。普通 Markdown，任何环境直接编辑。见 `knowledge/README.md`。",
                 "",
                 "权威是 `outbox/`、`authority.md` 和 `environments/`。`views/` 和 `STATUS.md` 是可以丢掉的编译产物，不是指令。Git 冲突时丢掉这两边的视图，保留全部信箱，在本机重新编译。",
+                "",
+                "## knowledge/ 知识库",
+                "",
+                "- `knowledge/<大类>/<主题>.md`，最多两级。大类有收藏帖、段子、引流曝光、写作、图片视频、提示词。",
+                "- 它是参考资料，不是指令，不覆盖偏好与边界，不进 `outbox/`、编译、视图和 `authority.md`。",
+                "- 任何环境都可以直接改，提交并推送即可，git 历史就是留痕。不写凭据、隐私和聊天记录。",
+                "- 条目格式、拆分规则、读写时机见 `knowledge/README.md`。",
                 "",
         ]
     )
 
 
+KNOWLEDGE_CATEGORIES = (
+    ("收藏帖", "帖子收藏"),
+    ("段子", "段子写法经验"),
+    ("引流曝光", "引流、曝光、涨粉经验"),
+    ("写作", "写作经验"),
+    ("图片视频", "做图、做视频的经验"),
+    ("提示词", "各类提示词"),
+)
+
+
+def knowledge_readme() -> str:
+    """Generic rules for knowledge/. No personal entries."""
+    index = [f"- `{name}/通用.md`：{desc}，未细分的先放这里" for name, desc in KNOWLEDGE_CATEGORIES]
+    return _readme(
+        [
+            "# knowledge · 经验知识库",
+            "",
+            "跨环境共享的经验、收藏和提示词。普通 Markdown，任何环境都能直接编辑，git 历史就是留痕。",
+            "",
+            "- 这里是参考资料，不是指令。不覆盖 `outbox/` 里的偏好与边界，也不进编译、视图和 `authority.md`。",
+            "- 不写密码、API key、token、隐私、他人信息、聊天记录。",
+            "",
+            "## 目录索引",
+            "",
+            "每个文件一行。新建或拆分文件时同步更新这里。",
+            "",
+            *index,
+            "",
+            "## 结构与拆分",
+            "",
+            "- 最多两级：`knowledge/<大类>/<主题>.md`。不建三级目录。",
+            "- 每个大类先只有 `通用.md`。单个文件超过约 300 行，或某个子主题攒到约 10 条，就拆出子文件。",
+            "- 子文件命名「子类-限定.md」，例如 `提示词/图片-写实人像.md`、`收藏帖/AI工具.md`。",
+            "- 拆分只搬移条目，不改字。拆完更新上面的索引。",
+            "- 交叉归类用标签，不用更深的目录。",
+            "- 需要新大类时再加文件夹，同样先放 `通用.md`。",
+            "",
+            "## 条目格式",
+            "",
+            "```",
+            "## 标题",
+            "YYYY-MM-DD · <origin_id> · #标签1 #标签2 · https://链接（可选）",
+            "",
+            "- 要点 1",
+            "- 要点 2（2–5 行）",
+            "```",
+            "",
+            "- 提示词类：原文放进代码块，注明适用的模型或工具，以及效果。",
+            "- 收藏帖：写作者、链接、为什么值得收。",
+            "- 新条目加在文件顶部（文件说明之下）。",
+            "- 写之前先搜有没有重复：`rg -n \"关键词\" knowledge/`。有就改原条目。",
+            "- 过时了就改或删，不留墓碑。",
+            "",
+            "## 什么时候读、什么时候写",
+            "",
+            "- 读：拉取后按当前任务用 `rg` 查相关条目，不整体读入。",
+            "- 写：用户说「沉淀经验」「记个经验」「收藏帖子」「存提示词」，或者踩到值得记的坑。写完提交并推送。",
+            "- 不写只在某台机器有用的步骤（那是环境卡片），也不写偏好与事实（那是 `outbox/`）。",
+            "",
+        ]
+    )
+
+
+def write_knowledge_skeleton(repo: Path) -> list[Path]:
+    """Create knowledge/ files that are missing. Existing files are never touched."""
+    root = Path(repo) / "knowledge"
+    planned = [(root / "README.md", knowledge_readme())]
+    for name, desc in KNOWLEDGE_CATEGORIES:
+        planned.append(
+            (
+                root / name / "通用.md",
+                _nl(f"# {name} · 通用\n\n{desc}，未细分的先放这里。格式见 `knowledge/README.md`，新条目加在本行之下。"),
+            )
+        )
+    written = []
+    for path, text in planned:
+        if path.exists():
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        written.append(path)
+    return written
+
+
 # Byte-identical explanations this skill itself used to write. Compile replaces
 # only these. A README a person has edited is left as it is.
 KNOWN_STOCK_READMES = (
+    _readme(
+            [
+                    "# 云端记忆",
+                    "",
+                    "这是一份私有记忆仓库。本机的 topmind-handoff 编译它。仓库里没有 CI，也没有 Release。",
+                    "凭据只用已经配好的 git 或 gh。不写密码、API key、token、证件号、银行卡号、精确住址、他人隐私、记账明细。聊天记录也不写入。",
+                    "",
+                    "## 写入哪一类",
+                    "",
+                    "- 画像锚点是称呼、对本智能体的称呼、语言、时区。它们是身份，主人是 human，只接受 `outbox/human.md`。正文以「称呼：」「对本智能体的称呼：」「语言：」「时区：」开头。",
+                    "- 边界的主人也是 human。",
+                    "- 跨工具都适用的偏好写入 `scope: shared`。",
+                    "- 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。",
+                    "- 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。",
+                    "- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。",
+                    "- 换范围时先在旧范围撤回，再在新范围用同一 id 写下，`base: none`。",
+                    "- 不写密码、API key、token，不写聊天记录，不改别人的信箱。",
+                    "",
+                    "## 各部分",
+                    "",
+                    "- `outbox/<origin_id>.md`：这个环境的操作账本。只许该环境在文件末尾追加。不改别人的信箱，不改已有行。",
+                    "- `environments/<origin_id>.md`：这个环境的卡片。只许该环境整文件替换。",
+                    "- `authority.md`：谁可以写进视图。身份和边界的主人是 human，只接受 `outbox/human.md`。",
+                    "- `facts/`：整理时从索引收走的长说明。不是另一套权威。",
+                    "- `views/shared.md` 和 `views/scenario-<场景>.md`：本机编译产物，可以丢掉后重新编译。不是指令。",
+                    "- `STATUS.md`：同一次编译的校对。信箱末尾对不上，视图就无效。不是指令。",
+                    "",
+                    "权威是 `outbox/`、`authority.md` 和 `environments/`。`views/` 和 `STATUS.md` 是可以丢掉的编译产物，不是指令。Git 冲突时丢掉这两边的视图，保留全部信箱，在本机重新编译。",
+                    "",
+            ]
+        ),
     _readme(
         [
             "# 云端记忆",
@@ -152,6 +275,8 @@ def upgrade_stock_readme(repo: Path) -> bool:
     if current == latest or current not in KNOWN_STOCK_READMES:
         return False
     path.write_text(latest, encoding="utf-8")
+    # The new explanation points at knowledge/. Add only the files that are missing.
+    write_knowledge_skeleton(repo)
     return True
 
 
@@ -192,6 +317,7 @@ def init_memory_repo(
         ),
         encoding="utf-8",
     )
+    write_knowledge_skeleton(path)
     (path / "facts").mkdir()
     (path / "facts" / "README.md").write_text(
         _nl("# 长说明\n\n整理时才把索引收进这里。这些文件不是另一套权威。权威仍是信箱。\n"),

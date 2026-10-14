@@ -148,6 +148,36 @@
       "query": "做个交接。（离线，对话里已经贴了一份交接包）",
       "expect": "triggered",
       "checks": ["只按交接包接收", "不推送", "版本不是 2 或没有附录就停下"]
+    },
+    {
+      "id": "k01",
+      "query": "沉淀经验：X 段子一句一行、行间空一行",
+      "expect": "triggered",
+      "checks": ["写进记忆仓库 knowledge/ 对应大类文件顶部", "先 rg 查重", "不写进 outbox", "写完提交并推送"]
+    },
+    {
+      "id": "k02",
+      "query": "记个经验，图片提示词加光比描述效果更稳",
+      "expect": "triggered",
+      "checks": ["写进 knowledge/提示词/", "按 knowledge/README.md 的条目格式", "不写凭据和聊天记录"]
+    },
+    {
+      "id": "k03",
+      "query": "收藏帖子 https://x.com/example/status/1",
+      "expect": "triggered",
+      "checks": ["写进 knowledge/收藏帖/", "写作者、链接、为什么值得收", "不编造帖子内容"]
+    },
+    {
+      "id": "k04",
+      "query": "存提示词：写实人像，柔光，85mm",
+      "expect": "triggered",
+      "checks": ["原文放代码块", "注明模型或工具和效果", "超约 300 行或子主题约 10 条才拆子文件"]
+    },
+    {
+      "id": "k05",
+      "query": "把这段灵感捕获到工作区，下篇稿子要用",
+      "expect": "not-triggered",
+      "checks": ["交给 topmind-capture", "不写进 handoff knowledge/"]
     }
   ]
 }
