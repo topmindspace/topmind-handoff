@@ -17,7 +17,7 @@ compatibility: >-
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.6.4"
+  version: "0.6.5"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
   updated: "2026-10-16"
@@ -167,5 +167,5 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 4. 没确认的不写入本工具的记忆。已有正文和锚点都不自动覆盖。
 5. 包格式是 `"2"`。其他版本先停，不写文件。
 6. 不搭服务，不装 SDK，不把编译交给 CI。用户的记忆仓库不添加 workflow，不做 Release。
-7. 技能升级只建议。用户确认后才装，先备份到新建的带时间戳目录。见 `references/environment.md`。
+7. 技能升级只建议。用户确认后就地覆盖，不留备份；本机更新时不降级。见 `references/environment.md`。
 8. 一个环境可以同时工作。各写各的信箱。分叉留给用户裁决，日期不自动选边。

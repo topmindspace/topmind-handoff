@@ -3,7 +3,7 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "示例助手 + topmind-handoff 0.6.4"
+compiler: "示例助手 + topmind-handoff 0.6.5"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff
@@ -16,7 +16,7 @@ compiler: "示例助手 + topmind-handoff 0.6.4"
 > 5. 边界只作行为约束，不写入事实记忆。
 > 6. 操作附录是账本，不是新事实。按 op_id 去重重放；不要把附录再导入成一条新记忆。
 > 7. 冲突问人，不猜。没确认的不写。
-> 8. 环境卡片里的技能版本是观察。升级要用户确认，先备份。不自动安装。
+> 8. 环境卡片里的技能版本是观察。升级要用户确认，就地覆盖、不留备份。不自动安装，不降级。
 
 # 交接包
 
@@ -86,7 +86,7 @@ override.pref-theme: 本环境编辑器用浅色
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.6.4（github:topmindspace/topmind-handoff）：编译记忆并渲染交接包
+- topmind-handoff 0.6.5（github:topmindspace/topmind-handoff）：编译记忆并渲染交接包
 
 ## 10. 操作附录（已反映在上文视图中）
 

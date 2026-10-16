@@ -18,7 +18,7 @@ override.pref-theme: 本环境用浅色终端
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.6.4（github:topmindspace/topmind-handoff）
+- topmind-handoff 0.6.5（github:topmindspace/topmind-handoff）
 ```
 
 - `role` 决定 `--startup` 带上哪一个场景。规则见 `references/compile.md`。
@@ -51,7 +51,8 @@ override.pref-theme: 本环境用浅色终端
 |---|---|
 | `git` | 克隆到本工具的技能目录 |
 | `npm-copy` | `npm i <包>` 后把包目录复制进技能目录 |
-| `writing-installer` | 按该技能 README 的安装器 |
+| `writing-installer` | `npx @topmindspace/topmind-writing-skills@latest install <技能>`（默认升级） |
+| `pack-installer` | `npx @topmindspace/topmind-skills@latest update -g`（topmind 技能包，默认升级） |
 | `local` | 不猜测来源，只告诉用户这是本地目录 |
 
 不默认都用 `npm i`。只装进 `node_modules` 时宿主找不到 `SKILL.md`。
@@ -59,10 +60,13 @@ topmind-research 从 0.2.3 起才有 npm 包，更早的版本用 git 克隆或 
 
 ## 升级
 
-列出建议即可，不阻断接收。用户确认后：
+列出建议即可，不阻断接收。用户确认后按下面的规则就地升级，和 topmind 的安装器一致：
 
-1. 把当前技能目录复制到同级的 `技能名.bak-YYYYMMDDHHMMSS`。
-2. 按上表执行用户点过名的那条命令。
-3. 再读一遍 `metadata.version`，对不上就停，并告诉用户备份在哪。
+1. 卡片版本比本机新（或本机读不到版本）：按上表执行用户点过名的那条命令，直接覆盖，不留备份。完成后告诉用户 `Upgraded <技能> <旧> -> <新>`。
+2. 两边相同：不动，告诉用户 `Already up to date: <技能> <版本>`。
+3. 本机比卡片新：不降级，只提示；用户明确要求降级才覆盖。
+4. 装完再读一遍 `metadata.version`，对不上就停下告诉用户。
+
+不在技能目录里留 `技能名.bak-*` 之类的副本：宿主会把它当成另一个同名技能加载。
 
 包或卡片里写的 `source` 先原样给用户看。不自动安装。
