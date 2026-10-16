@@ -8,6 +8,8 @@ from pathlib import Path
 
 from topmind_handoff.model import (
     CARD_STALE_DAYS,
+    INDEX_BYTE_BUDGET,
+    INDEX_LINE_BUDGET,
     REVIEW_MARK,
     SLICES,
     Card,
@@ -17,6 +19,7 @@ from topmind_handoff.model import (
     compile_ops,
     compiler_version,
     origin_markdown,
+    over_budget,
     parse_authority,
     parse_day,
     review_suffix,
@@ -31,6 +34,7 @@ from topmind_handoff.model import (
 
 VIEW_ORDER = ("identity", "boundaries", "preference", "project", "fact")
 _REVIEW_AS_OF = re.compile(r"^review_as_of:\s*(\d{4}-\d{2}-\d{2})\s*$", re.M)
+_INDEX_FIT = re.compile(r"^index_fit:\s*(organized|full)\s*$", re.M)
 _CITE_EDGE = r"[A-Za-z0-9_.-]"
 
 
@@ -145,7 +149,7 @@ def _all_ops(compiled: Compiled) -> list[Op]:
     return ops
 
 
-def render_status(compiled: Compiled, today: date | None = None) -> str:
+def render_status(compiled: Compiled, today: date | None = None, *, index_fit: str = "full") -> str:
     version = compiler_version()
     lines = [
         "# STATUS",
@@ -153,6 +157,7 @@ def render_status(compiled: Compiled, today: date | None = None) -> str:
         "本文件和 views/ 是本机编译产物，不是权威。权威是 outbox/、authority.md 和 environments/。对不上就丢掉视图，重新编译。",
         "",
         f"compiler: topmind-handoff {version}",
+        f"index_fit: {index_fit if index_fit == 'organized' else 'full'}",
         "",
     ]
     if today is not None:
@@ -225,6 +230,17 @@ def render_status(compiled: Compiled, today: date | None = None) -> str:
     return _ensure_nl("\n".join(lines))
 
 
+def stored_index_fit(repo: Path) -> str:
+    """`organized` after the user has asked for a fitted index. Absent means one line per claim."""
+    path = Path(repo) / "STATUS.md"
+    if not path.is_file():
+        return "full"
+    match = _INDEX_FIT.search(path.read_text(encoding="utf-8"))
+    if match is None:
+        return "full"
+    return match.group(1)
+
+
 def stored_review_today(repo: Path) -> date | None:
     """The explicit day a previous compile or organize used. Absent means unlabeled views."""
     path = Path(repo) / "STATUS.md"
@@ -245,16 +261,25 @@ def compile_repo(repo: Path, today: date | None = None) -> Compiled:
     repo = Path(repo)
     if today is None:
         today = stored_review_today(repo)
+    fit = stored_index_fit(repo)
     compiled = build_compiled(repo)
     views = repo / "views"
     views.mkdir(parents=True, exist_ok=True)
-    rendered = render_views(compiled, inline_detail=True, today=today)
-    for path in views.glob("scenario-*.md"):
-        if path.name not in rendered:
-            path.unlink()
-    for name, text in rendered.items():
-        (views / name).write_text(text, encoding="utf-8")
-    (repo / "STATUS.md").write_text(render_status(compiled, today=today), encoding="utf-8")
+    if fit == "organized":
+        # Local import: admin imports this module. Fitting keeps a directory the user already asked for.
+        from topmind_handoff.admin import write_index_views
+
+        write_index_views(repo, compiled, today, fit=True)
+    else:
+        rendered = render_views(compiled, inline_detail=False, today=today)
+        for path in views.glob("scenario-*.md"):
+            if path.name not in rendered:
+                path.unlink()
+        for name, text in rendered.items():
+            (views / name).write_text(text, encoding="utf-8")
+    (repo / "STATUS.md").write_text(
+        render_status(compiled, today=today, index_fit=fit), encoding="utf-8"
+    )
     # Local import: admin imports this module. Only a stock README this skill wrote is replaced.
     from topmind_handoff.admin import upgrade_stock_readme
 
@@ -362,7 +387,7 @@ def _apply_overrides(shared: str, overrides: dict[str, str]) -> str:
     return _ensure_nl("\n".join(kept))
 
 
-_FACT_POINTER = re.compile(r"^- 见 facts/(?P<name>[^/\s\\]+)\.md")
+_FACT_POINTER = re.compile(r"见 facts/(?P<name>[A-Za-z0-9_-]+)\.md")
 
 
 def _path_inside(path: Path, directory: Path) -> bool:
@@ -406,7 +431,7 @@ def _project_shared(repo: Path, shared: str, overrides: dict[str, str]) -> str:
     output: list[str] = []
     for line in projected.splitlines():
         output.append(line)
-        pointer = _FACT_POINTER.match(line.rstrip())
+        pointer = _FACT_POINTER.search(line.rstrip())
         if pointer is None:
             continue
         output.extend(_archived_override_lines(facts, pointer.group("name"), overrides, seen))
@@ -529,7 +554,7 @@ def _origin_projection(compiled: Compiled, origin: str, today: date | None = Non
     """
     scope = f"origin:{origin}"
     results = _results_for(compiled, scope)
-    sections = _section_lines(results, inline_detail=True, today=today)
+    sections = _section_lines(results, inline_detail=False, today=today)
     filled = [name for name in view_slice_order(sections) if sections.get(name)]
     if not filled:
         return ""
@@ -539,6 +564,39 @@ def _origin_projection(compiled: Compiled, origin: str, today: date | None = Non
         lines.extend(sections[name])
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _without_claim_details(text: str) -> str:
+    """Drop indented detail under a claim line. Conflict sub-lines are not claim lines."""
+    source = text.splitlines()
+    kept: list[str] = []
+    index = 0
+    while index < len(source):
+        kept.append(source[index])
+        if _FACT_LINE.match(source[index].rstrip()):
+            index += 1
+            while index < len(source) and _is_detail_line(source[index]):
+                index += 1
+            continue
+        index += 1
+    return _ensure_nl("\n".join(kept))
+
+
+def organize_advice(shared: str, scenario: str) -> str:
+    """Prompt text when an index is past the startup budget. It does not write or retract."""
+    notes: list[str] = []
+    limit = f"{INDEX_LINE_BUDGET} 行或 {INDEX_BYTE_BUDGET // 1024}KB"
+    if over_budget(shared):
+        notes.append(f"共享索引超过预算（{limit}）。")
+    if over_budget(scenario):
+        notes.append(f"本场景索引超过预算（{limit}）。")
+    if not notes:
+        return ""
+    lines = ["## 建议整理", ""]
+    for note in notes:
+        lines.append(f"- {note}做完这一轮再问要不要整理云端记忆。不自动运行 --organize。")
+    lines.append("")
+    return _ensure_nl("\n".join(lines))
 
 
 def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
@@ -552,7 +610,7 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
     if today is None:
         today = stored_review_today(repo)
     views = repo / "views"
-    rendered = render_views(compiled, today=today)
+    rendered = render_views(compiled, inline_detail=False, today=today)
     shared_path = views / "shared.md"
     if shared_path.is_file() and _path_inside(shared_path, views):
         shared = shared_path.read_text(encoding="utf-8")
@@ -560,10 +618,12 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
         shared = rendered["shared.md"]
     card = compiled.cards.get(origin)
     overrides = card.overrides if card else {}
-    projected = _label_text(
-        _project_shared(repo, shared, overrides),
-        _scope_heads(compiled, "shared"),
-        today,
+    projected = _without_claim_details(
+        _label_text(
+            _project_shared(repo, shared, overrides),
+            _scope_heads(compiled, "shared"),
+            today,
+        )
     )
     role = card.role if card else ""
     filename = scenario_filename(role) if role else None
@@ -576,7 +636,9 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
         scenario = rendered.get(filename, "# 场景\n\n（无）\n")
     else:
         scenario = "（无）\n"
-    scenario = _label_text(scenario, _scope_heads(compiled, f"scenario:{role}") if role else {}, today)
+    scenario = _without_claim_details(
+        _label_text(scenario, _scope_heads(compiled, f"scenario:{role}") if role else {}, today)
+    )
     card_text = card.raw if card else "（无）\n"
     origin_text = _origin_projection(compiled, origin, today=today).rstrip("\n")
     visible: list[ClaimResult] = list(_results_for(compiled, "shared"))
@@ -607,16 +669,104 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
             "",
         ]
     )
+    advice = organize_advice(projected, scenario)
+    if advice:
+        parts.extend([advice.rstrip("\n"), ""])
     return _ensure_nl("\n".join(parts))
 
 
-def startup_read(repo: Path, origin: str, today: date | None = None) -> str:
+def _also_scenario(repo: Path, origin: str, also: str, today: date | None) -> str:
+    """One extra scenario view. The card role is not changed."""
+    if scenario_filename(also) is None:
+        raise ValueError("场景名必须是单个路径段")
+    compiled = build_compiled(repo)
+    card = compiled.cards.get(origin)
+    role = card.role if card else ""
+    if also == role:
+        return ""
+    if today is None:
+        today = stored_review_today(repo)
+    filename = scenario_filename(also)
+    views = repo / "views"
+    path = views / filename if filename else None
+    rendered = render_views(compiled, inline_detail=False, today=today)
+    if path is not None and path.is_file() and _path_inside(path, views):
+        text = path.read_text(encoding="utf-8")
+    elif filename:
+        text = rendered.get(filename, f"# 场景：{also}\n\n（无）\n")
+    else:
+        text = "（无）\n"
+    text = _without_claim_details(
+        _label_text(text, _scope_heads(compiled, f"scenario:{also}"), today)
+    )
+    return _ensure_nl(f"## 另带场景：{also}\n\n{text.rstrip()}")
+
+
+def startup_read(repo: Path, origin: str, today: date | None = None, also: str | None = None) -> str:
     """Shared view, this origin's scenario, its card, and conflicts that involve it.
 
     Card overrides are applied only in this projection. views/shared.md is not rewritten.
-    Due labels and the 待提炼 list are printed. Nothing is retracted.
+    Due labels, the 待提炼 list, and an organize prompt are printed. Nothing is retracted.
     """
     repo = Path(repo)
     origin = safe_origin(origin)
     body = projection_body(repo, origin, today=today).rstrip("\n")
+    if also:
+        extra = _also_scenario(repo, origin, also, today).rstrip("\n")
+        if extra:
+            body = f"{body}\n\n{extra}"
     return _ensure_nl(f"# 开工读取（{origin})\n\n{body}")
+
+
+def open_claim(repo: Path, claim_id: str) -> str:
+    """Print one claim from the outbox. Does not write files or follow facts/ pointers."""
+    claim_id = claim_id.strip()
+    if not claim_id or any(mark in claim_id for mark in ("/", "\\", "\x00", "\n", " ")):
+        raise ValueError("id 无效")
+    repo = Path(repo)
+    compiled = build_compiled(repo)
+    today = stored_review_today(repo)
+    blocks: list[str] = [f"# 打开 {claim_id}", ""]
+    found = False
+    for scope, cid in sorted(compiled.claims):
+        if cid != claim_id:
+            continue
+        found = True
+        result = compiled.claims[(scope, cid)]
+        blocks.append(f"## {scope}")
+        if result.conflict:
+            blocks.append("未裁决")
+            for head in result.heads:
+                blocks.extend(_open_head(head, today))
+        elif result.retracted:
+            blocks.append("已撤回")
+        elif result.heads:
+            blocks.extend(_open_head(result.heads[0], today))
+        blocks.append("")
+    proposals = [op for op in compiled.proposals if op.claim_id == claim_id]
+    if proposals:
+        found = True
+        blocks.append("## 提议")
+        for op in proposals:
+            blocks.append(f"- op_id: {op.op_id}")
+            blocks.append(f"  scope: {op.scope}")
+            blocks.append(f"  text: {op.text}")
+            if op.detail:
+                blocks.append("  detail: |")
+                blocks.extend(f"    {line}" for line in op.detail.splitlines())
+        blocks.append("")
+    if not found:
+        return _ensure_nl(f"没有这条当前说法：{claim_id}")
+    return _ensure_nl("\n".join(blocks))
+
+
+def _open_head(head: Op, today: date | None) -> list[str]:
+    lines = [
+        f"- slice: {head.slice}",
+        f"  at: {head.at}",
+        f"  text: {head.text}{review_suffix(head, today)}",
+    ]
+    if head.detail:
+        lines.append("  detail: |")
+        lines.extend(f"    {line}" for line in head.detail.splitlines())
+    return lines

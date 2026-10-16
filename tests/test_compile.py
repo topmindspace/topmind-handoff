@@ -216,10 +216,15 @@ override.fact-a: 覆盖句
         compile_repo(self.root)
         shared = (self.root / "views" / "shared.md").read_text(encoding="utf-8")
         self.assertIn("甲事实", shared)
-        self.assertIn("原始细节", shared)
+        self.assertNotIn("原始细节", shared)
         started = startup_read(self.root, "Grok-demo-sync")
         self.assertIn("覆盖句", started)
         self.assertNotIn("原始细节", started)
+        self.assertEqual((self.root / "views" / "shared.md").read_text(encoding="utf-8"), shared)
+        from topmind_handoff.compile import open_claim
+
+        opened = open_claim(self.root, "fact-a")
+        self.assertIn("原始细节", opened)
         self.assertEqual((self.root / "views" / "shared.md").read_text(encoding="utf-8"), shared)
 
     def test_closes_leaves_one_head_and_clock_does_not_win(self) -> None:

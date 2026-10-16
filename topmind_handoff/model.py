@@ -29,6 +29,12 @@ CARD_STALE_DAYS = 90
 REVIEW_MARK = "（未复核）"
 INDEX_LINE_BUDGET = 200
 INDEX_BYTE_BUDGET = 25 * 1024
+CLUSTER_SIZE = 40
+
+
+def over_budget(text: str) -> bool:
+    """True when an index is past the startup budget. The count never picks a chain head."""
+    return text.count("\n") > INDEX_LINE_BUDGET or len(text.encode("utf-8")) > INDEX_BYTE_BUDGET
 
 
 def parse_day(value: str) -> date | None:

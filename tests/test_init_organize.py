@@ -197,7 +197,7 @@ refreshed: {fresh}
             compile_repo(root)
             write(root, "views/scenario-retired.md", "# 旧场景\n\n手工\n")
             fat = (root / "views" / "shared.md").read_text(encoding="utf-8")
-            self.assertGreater(len(fat.splitlines()), 200)
+            self.assertNotIn("细节0-3", fat)
             before = {
                 path.name: path.read_bytes()
                 for path in sorted((root / "outbox").glob("*.md"))
@@ -259,15 +259,29 @@ refreshed: {fresh}
                 )
             write(root, "outbox/Grok-demo-sync.md", "\n".join(blocks))
             before = (root / "outbox" / "Grok-demo-sync.md").read_bytes()
+            compile_repo(root, date(2026, 10, 12))
+            full = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertIn("- 事实219 {id:fact-219}", full)
+            self.assertIn("建议整理", startup_read(root, "Grok-demo-sync"))
+            self.assertIn("不自动运行 --organize", startup_read(root, "Grok-demo-sync"))
             organize_repo(root, date(2026, 10, 12))
             self.assertEqual((root / "outbox" / "Grok-demo-sync.md").read_bytes(), before)
             slim = (root / "views" / "shared.md").read_text(encoding="utf-8")
             self.assertLessEqual(len(slim.splitlines()), 200)
             self.assertIn("见 facts/shared-fact.md", slim)
-            self.assertNotIn("事实219", slim)
+            self.assertIn("事实0", slim)
+            self.assertIn("fact-219", slim)
+            self.assertNotIn("- 事实219 {id:fact-219}", slim)
             archived = (root / "facts" / "shared-fact.md").read_text(encoding="utf-8")
             self.assertIn("事实0", archived)
             self.assertIn("事实219", archived)
+            self.assertIn("index_fit: organized", (root / "STATUS.md").read_text(encoding="utf-8"))
+            compile_repo(root)
+            kept = (root / "views" / "shared.md").read_text(encoding="utf-8")
+            self.assertIn("见 facts/shared-fact.md", kept)
+            self.assertNotIn("- 事实219 {id:fact-219}", kept)
+            started = startup_read(root, "Grok-demo-sync")
+            self.assertNotIn("建议整理", started)
 
     def test_own_recompiles_former_owner_out_of_the_scenario(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -467,7 +481,8 @@ override.pref-theme: 覆盖句
             shared_path = root / "views" / "shared.md"
             shared = shared_path.read_text(encoding="utf-8")
             self.assertIn("见 facts/shared-preference.md", shared)
-            self.assertNotIn("深色方案", shared)
+            self.assertIn("pref-theme", shared)
+            self.assertNotIn("- 深色方案 {id:pref-theme}", shared)
             self.assertNotIn("覆盖句", shared)
             archived = (root / "facts" / "shared-preference.md").read_text(encoding="utf-8")
             self.assertIn("- 深色方案 {id:pref-theme} （未复核）", archived)
@@ -702,6 +717,24 @@ refreshed: {(today - timedelta(days=89)).isoformat()}
             self.assertIn("本机已补上 fact-cloud", kept)
             again = startup_read(root, "Grok-demo-sync", today=today)
             self.assertIn("- 旧事实 {id:fact-old} （未复核）", again)
+            also = startup_read(root, "Grok-demo-sync", today=today, also="coding")
+            self.assertIn("另带场景：coding", also)
+            self.assertNotIn("scenario.coding", (root / "authority.md").read_text(encoding="utf-8"))
+            script = ROOT / "scripts" / "compile_memory.py"
+            opened = subprocess.run(
+                [sys.executable, str(script), "--open", str(root), "--id", "fact-old"],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(opened.returncode, 0, opened.stdout + opened.stderr)
+            self.assertIn("旧事实", opened.stdout)
+            self.assertNotIn("年轻事实", opened.stdout)
+            refused = subprocess.run(
+                [sys.executable, str(script), "--startup", str(root), "--origin", "Grok-demo-sync", "--also", "../evil"],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(refused.returncode, 0, refused.stdout + refused.stderr)
             self.assertIn("引用 `fact-join` 提到当前说法 `fact-cloud`。不撤回，不改写。", again)
             self.assertEqual(before, {path.name: path.read_bytes() for path in (root / "outbox").glob("*.md")})
 

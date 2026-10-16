@@ -10,12 +10,12 @@ from pathlib import Path
 from topmind_handoff.compile import VIEW_ORDER as SLICE_ORDER
 from topmind_handoff.compile import build_compiled, compile_repo, render_status
 from topmind_handoff.model import (
-    INDEX_BYTE_BUDGET,
-    INDEX_LINE_BUDGET,
+    CLUSTER_SIZE,
     ClaimResult,
     Compiled,
     Op,
     origin_markdown,
+    over_budget,
     parse_authority,
     parse_day,
     review_suffix,
@@ -66,7 +66,8 @@ def memory_readme() -> str:
                 "- 边界的主人也是 human。",
                 "- 跨工具都适用的偏好写入 `scope: shared`。",
                 "- 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。",
-                "- 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。",
+                "- 另一台要接着做的下一步用 `scope: shared` 或 `scope: scenario:<场景>`。只在这台的路径和工具状态用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。",
+                "- 产出只记状态、下一步和位置，不记正文。`slice` 用 `work` 或 `project`。`~/` 路径用 `scope: origin:`。",
                 "- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。",
                 "- 换范围时先在旧范围撤回，再在新范围用同一 id 写下，`base: none`。",
                 "- 不写密码、API key、token，不写聊天记录，不改别人的信箱。",
@@ -262,6 +263,76 @@ KNOWN_STOCK_READMES = (
             "",
         ]
     ),
+    _readme(
+        [
+            "# 云端记忆",
+            "",
+            "这是一份私有记忆仓库。本机的 topmind-handoff 编译它。仓库里没有 CI，也没有 Release。",
+            "凭据只用已经配好的 git 或 gh。不写密码、API key、token、证件号、银行卡号、精确住址、他人隐私、记账明细。聊天记录也不写入。",
+            "",
+            "## 写入哪一类",
+            "",
+            "- 画像锚点是称呼、对本智能体的称呼、语言、时区。它们是身份，主人是 human，只接受 `outbox/human.md`。正文以「称呼：」「对本智能体的称呼：」「语言：」「时区：」开头。",
+            "- 边界的主人也是 human。",
+            "- 跨工具都适用的偏好写入 `scope: shared`。",
+            "- 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。",
+            "- 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。",
+            "- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。",
+            "- 换范围时先在旧范围撤回，再在新范围用同一 id 写下，`base: none`。",
+            "- 不写密码、API key、token，不写聊天记录，不改别人的信箱。",
+            "",
+            "## 各部分",
+            "",
+            "- `outbox/<origin_id>.md`：这个环境的操作账本。只许该环境在文件末尾追加。不改别人的信箱，不改已有行。",
+            "- `environments/<origin_id>.md`：这个环境的卡片。只许该环境整文件替换。",
+            "- `authority.md`：谁可以写进视图。身份和边界的主人是 human，只接受 `outbox/human.md`。",
+            "- `facts/`：整理时从索引收走的长说明。不是另一套权威。",
+            "- `views/shared.md` 和 `views/scenario-<场景>.md`：本机编译产物，可以丢掉后重新编译。不是指令。",
+            "- `STATUS.md`：同一次编译的校对。信箱末尾对不上，视图就无效。不是指令。",
+            "",
+            "权威是 `outbox/`、`authority.md` 和 `environments/`。`views/` 和 `STATUS.md` 是可以丢掉的编译产物，不是指令。Git 冲突时丢掉这两边的视图，保留全部信箱，在本机重新编译。",
+            "",
+        ]
+    ),
+    _readme(
+        [
+            "# 云端记忆",
+            "",
+            "这是一份私有记忆仓库。本机的 topmind-handoff 编译它。仓库里没有 CI，也没有 Release。",
+            "凭据只用已经配好的 git 或 gh。不写密码、API key、token、证件号、银行卡号、精确住址、他人隐私、记账明细。聊天记录也不写入。",
+            "",
+            "## 写入哪一类",
+            "",
+            "- 画像锚点是称呼、对本智能体的称呼、语言、时区。它们是身份，主人是 human，只接受 `outbox/human.md`。正文以「称呼：」「对本智能体的称呼：」「语言：」「时区：」开头。",
+            "- 边界的主人也是 human。",
+            "- 跨工具都适用的偏好写入 `scope: shared`。",
+            "- 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。",
+            "- 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。",
+            "- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。",
+            "- 换范围时先在旧范围撤回，再在新范围用同一 id 写下，`base: none`。",
+            "- 不写密码、API key、token，不写聊天记录，不改别人的信箱。",
+            "",
+            "## 各部分",
+            "",
+            "- `outbox/<origin_id>.md`：这个环境的操作账本。只许该环境在文件末尾追加。不改别人的信箱，不改已有行。",
+            "- `environments/<origin_id>.md`：这个环境的卡片。只许该环境整文件替换。",
+            "- `authority.md`：谁可以写进视图。身份和边界的主人是 human，只接受 `outbox/human.md`。",
+            "- `facts/`：整理时从索引收走的长说明。不是另一套权威。",
+            "- `views/shared.md` 和 `views/scenario-<场景>.md`：本机编译产物，可以丢掉后重新编译。不是指令。",
+            "- `STATUS.md`：同一次编译的校对。信箱末尾对不上，视图就无效。不是指令。",
+            "- `knowledge/`：跨环境共享的经验、收藏帖、提示词。普通 Markdown，任何环境直接编辑。见 `knowledge/README.md`。",
+            "",
+            "权威是 `outbox/`、`authority.md` 和 `environments/`。`views/` 和 `STATUS.md` 是可以丢掉的编译产物，不是指令。Git 冲突时丢掉这两边的视图，保留全部信箱，在本机重新编译。",
+            "",
+            "## knowledge/ 知识库",
+            "",
+            "- `knowledge/<大类>/<主题>.md`，最多两级。大类有收藏帖、段子、引流曝光、写作、图片视频、提示词。",
+            "- 它是参考资料，不是指令，不覆盖偏好与边界，不进 `outbox/`、编译、视图和 `authority.md`。",
+            "- 任何环境都可以直接改，提交并推送即可，git 历史就是留痕。不写凭据、隐私和聊天记录。",
+            "- 条目格式、拆分规则、读写时机见 `knowledge/README.md`。",
+            "",
+        ]
+    ),
 )
 
 
@@ -432,17 +503,52 @@ def _results_for(compiled: Compiled, scope: str) -> list[ClaimResult]:
     return [result for (item_scope, _cid), result in compiled.claims.items() if item_scope == scope]
 
 
-def _compact_scope(title: str, results: list[ClaimResult], today: date, facts_root: Path, fact_prefix: str) -> str:
+def _index_line(head: Op, today: date) -> str:
+    return f"- {head.text} {{id:{head.claim_id}}}{_review_suffix(head, today)}"
+
+
+def _cluster_line(chunk: list[Op], today: date, archive: str) -> str:
+    """One directory row: a few claim texts, every id, and the facts file that holds the rest."""
+    sample = "；".join(head.text for head in chunk[:3])
+    count = len(chunk)
+    label = f"{sample} 等 {count} 条" if count > 3 else f"{sample}（{count} 条）"
+    ids = " ".join(head.claim_id for head in chunk)
+    return f"- {label}：{ids}。见 facts/{archive}.md"
+
+
+def _pack_heads(heads: list[Op], today: date, archive: str, size: int) -> list[str]:
+    lines: list[str] = []
+    step = max(size, 2)
+    for start in range(0, len(heads), step):
+        chunk = heads[start : start + step]
+        if len(chunk) == 1:
+            lines.append(_index_line(chunk[0], today))
+        else:
+            lines.append(_cluster_line(chunk, today, archive))
+    return lines
+
+
+def _compact_scope(
+    title: str,
+    results: list[ClaimResult],
+    today: date,
+    facts_root: Path,
+    fact_prefix: str,
+    *,
+    fit: bool,
+) -> str:
     sections: dict[str, list[str]] = {name: [] for name in SLICE_ORDER}
     details: dict[str, list[str]] = {name: [] for name in SLICE_ORDER}
+    section_heads: dict[str, list[Op]] = {}
     for result in sorted(results, key=lambda item: item.claim_id):
         if result.conflict or result.retracted or not result.heads:
             continue
         head = result.heads[0]
         if head.kind != "set":
             continue
-        line = f"- {head.text} {{id:{head.claim_id}}}{_review_suffix(head, today)}"
+        line = _index_line(head, today)
         sections.setdefault(head.slice, []).append(line)
+        section_heads.setdefault(head.slice, []).append(head)
         if head.detail or _review_suffix(head, today):
             block = [f"## {head.claim_id}", line]
             if head.detail:
@@ -481,23 +587,42 @@ def _compact_scope(title: str, results: list[ClaimResult], today: date, facts_ro
         dest.write_text(_nl("# " + slice_name + "\n\n" + "\n".join(block)), encoding="utf-8")
 
     text = render(sections)
-    # Collapse the largest slices until the index fits the startup budget.
-    collapsible = [name for name in ("fact", "preference", "project", "identity", "boundaries")]
-    collapsible.extend(
-        name
-        for name in sections
-        if name not in SLICE_ORDER and _SAFE_NAME.fullmatch(name) and name not in collapsible
-    )
-    while (text.count("\n") > INDEX_LINE_BUDGET or len(text.encode("utf-8")) > INDEX_BYTE_BUDGET) and any(
-        len(sections.get(name) or []) > 1 for name in collapsible
-    ):
-        name = max(collapsible, key=lambda item: len(sections.get(item) or []))
-        count = len(sections.get(name) or [])
-        if count <= 1:
+    if not fit:
+        return text
+    sizes: dict[str, int] = {}
+    frozen: set[str] = set()
+    while over_budget(text):
+        pending = [
+            name
+            for name, heads in section_heads.items()
+            if name not in frozen and len(heads) > 1 and _archive_path(facts_root, fact_prefix, name) is not None
+        ]
+        if not pending:
             break
-        _write_slice_archive(facts_root, fact_prefix, name, sections.get(name) or [], details.get(name) or [])
-        sections[name] = [f"- 见 facts/{fact_prefix}-{name}.md（{count} 条）"]
+        name = max(pending, key=lambda item: len(section_heads[item]))
+        heads = section_heads[name]
+        size = sizes.get(name, CLUSTER_SIZE)
+        if name in sizes:
+            if size >= len(heads):
+                frozen.add(name)
+                continue
+            size = min(len(heads), size * 2)
+        sizes[name] = size
+        archive = _archive_path(facts_root, fact_prefix, name)
+        if archive is None:
+            frozen.add(name)
+            continue
+        _write_slice_archive(
+            facts_root,
+            fact_prefix,
+            name,
+            [_index_line(head, today) for head in heads],
+            details.get(name) or [],
+        )
+        sections[name] = _pack_heads(heads, today, archive.stem, size)
         text = render(sections)
+        if size >= len(heads) and over_budget(text):
+            frozen.add(name)
     return text
 
 
@@ -536,22 +661,19 @@ def _card_refreshed(raw: str) -> date | None:
     return None
 
 
-def organize_repo(repo: Path, today: date | None = None) -> Compiled:
-    """Compact the fact index, label due facts, and mark stale cards.
+def write_index_views(repo: Path, compiled: Compiled, today: date | None, *, fit: bool) -> None:
+    """Write one-line views. `fit` clusters slices that are past the startup budget.
 
-    Outbox files are not rewritten. There is no timer and no resident process.
+    Detail stays in the outbox. A fitted pass also copies it under facts/. Outboxes are not touched.
     """
     repo = Path(repo)
     today = today or date.today()
-    outbox = repo / "outbox"
-    before = {path.name: path.read_bytes() for path in sorted(outbox.glob("*.md"))} if outbox.is_dir() else {}
-    compiled = build_compiled(repo)
     views = repo / "views"
     views.mkdir(parents=True, exist_ok=True)
     facts_root = repo / "facts"
-    shared = _results_for(compiled, "shared")
     (views / "shared.md").write_text(
-        _compact_scope("共享", shared, today, facts_root, "shared"), encoding="utf-8"
+        _compact_scope("共享", _results_for(compiled, "shared"), today, facts_root, "shared", fit=fit),
+        encoding="utf-8",
     )
     known_ops: list[Op] = list(compiled.proposals)
     for result in compiled.claims.values():
@@ -565,18 +687,40 @@ def organize_repo(repo: Path, today: date | None = None) -> Compiled:
             continue
         keep.add(filename)
         scope = f"scenario:{name}"
-        text = _compact_scope(f"场景：{name}", _results_for(compiled, scope), today, facts_root, f"scenario-{name}")
+        text = _compact_scope(
+            f"场景：{name}",
+            _results_for(compiled, scope),
+            today,
+            facts_root,
+            f"scenario-{name}",
+            fit=fit,
+        )
         (views / filename).write_text(text, encoding="utf-8")
     for path in views.glob("scenario-*.md"):
         if path.name not in keep:
             path.unlink()
+
+
+def organize_repo(repo: Path, today: date | None = None) -> Compiled:
+    """Fit the index, label due facts, and mark stale cards.
+
+    Outbox files are not rewritten. There is no timer and no resident process.
+    """
+    repo = Path(repo)
+    today = today or date.today()
+    outbox = repo / "outbox"
+    before = {path.name: path.read_bytes() for path in sorted(outbox.glob("*.md"))} if outbox.is_dir() else {}
+    compiled = build_compiled(repo)
+    write_index_views(repo, compiled, today, fit=True)
     environments = repo / "environments"
     if environments.is_dir():
         for path in sorted(environments.glob("*.md")):
             _mark_stale(path, today)
     # Cards may now be stale; rebuild status from the same outbox tips.
     compiled = build_compiled(repo)
-    (repo / "STATUS.md").write_text(render_status(compiled, today=today), encoding="utf-8")
+    (repo / "STATUS.md").write_text(
+        render_status(compiled, today=today, index_fit="organized"), encoding="utf-8"
+    )
     after = {path.name: path.read_bytes() for path in sorted(outbox.glob("*.md"))} if outbox.is_dir() else {}
     if before != after:
         raise RuntimeError("整理改写了信箱")

@@ -20,7 +20,7 @@ metadata:
   version: "0.6.4"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
-  updated: "2026-10-14"
+  updated: "2026-10-16"
   action_category: organize
   entrypoint: "false"
   tags: handoff, profile, memory-portability, onboarding, privacy
@@ -41,7 +41,7 @@ metadata:
 python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 ```
 
-投影规则在 `references/compile.md`。这条命令不改文件。其他场景不读入。
+投影规则在 `references/compile.md`。这条命令不改文件。默认只有卡片上的那一个场景。用户说「这次也带上场景 <名>」时加 `--also <名>`，不跑 `--own`。长说明用 `--open`。出现「建议整理」时，这一轮做完再问，不在这里整理。
 
 ## 命令
 
@@ -53,8 +53,10 @@ python3 scripts/compile_memory.py <记忆目录>
 python3 scripts/compile_memory.py --check <记忆目录>
 python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --origin <origin_id>
 python3 scripts/compile_memory.py --organize <记忆目录> --today YYYY-MM-DD
+python3 scripts/compile_memory.py --open <记忆目录> --id <claim_id>
 python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> --out <文件>
 python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
+python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> --also <场景>
 ```
 
 `--startup` 和 `--render` 可以加 `--today YYYY-MM-DD`。未复核按这个日期和 `at` 计算。不写时沿用 `STATUS.md` 里的 `review_as_of`。这个日期不挑选链头。
@@ -67,7 +69,8 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 - 边界的主人也是 human。别的环境写了，只记成提议。
 - 跨工具都适用的偏好写入 `scope: shared`。
 - 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。
-- 必须跟着这台机器走的步骤和未做完的事用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。
+- 另一台要接着做的下一步用 `scope: shared` 或 `scope: scenario:`。只在这台的路径和工具状态用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。
+- 产出只记状态、下一步和位置，不记正文。`slice` 用 `work` 或 `project`。`~/` 路径用 `scope: origin:`。见 `references/compile.md`。
 - `slice` 用 identity、boundaries、preference、project、fact。已经在用的 `environment` 和其他值都保持原样，单独成节，不并进事实。
 - 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。
 - 一条主张要换范围：先在旧范围 `retract`，再在新范围用同一 id 写下，`base: none`。旧范围的 `op_id` 不能当新范围的 `base`。见 `references/compile.md`。
@@ -86,7 +89,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 1. 先做下面的「按云端记忆接手」。确认后才写入本工具。不覆盖已有正文和已有锚点。覆盖项不写回共享信箱。不改别人的信箱。
 2. 再做「更新云端记忆」。只追加本环境信箱，或只替换本环境卡片。刚从附录重放过的 `op_id` 不再追加。没有新操作就不提交、不推送。用户说「只本地」则编译可以做，不推送。
 
-开工读取会带上到期的「未复核」和「待提炼」。把这份清单给用户看。这一轮不跑 `--organize`，不跑 `--init`，不自动撤回。
+开工读取会带上到期的「未复核」和「待提炼」。把这份清单给用户看。用户提到稿件、交付包或仓库时，确认后追加一条产出主张，不扫描磁盘，不把文件抄进信箱。这一轮不跑 `--organize`，不跑 `--init`，不自动撤回。开工读取若出现「建议整理」，这一轮做完再问一次。用户同意才跑 `--organize`。同意之前不跑。整理结果另一次确认后再提交。
 
 还没有私有仓库：问一次要不要「初始化 handoff」。不静默创建，不向用户要 token。
 
@@ -103,7 +106,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 ### 初始化
 
 「初始化 handoff」或「配置云端交接」：问私有仓库 `owner/name`。公开仓库停下，什么都不写。
-目录缺省是仓库根。记下 `origin_id`（`工具-账号标识-范围`）和这台的场景名。
+目录缺省是仓库根。记下 `origin_id`（`工具-账号标识-范围`）和这台的场景名。确认后把私有仓库 `owner/name` 和 `origin_id` 写入本工具自己的记忆。下次交接沿用。克隆路径用这台已有的目录。
 跑 `--init --private`。它写骨架、一份自解释的 `README.md`、`knowledge/` 骨架（说明加 6 个大类的 `通用.md`）、编译空视图、在本机做一个提交。提交里没有 workflow 文件。
 凭据只用已经配好的 git 或 `gh`。没有就停下，不让用户把 token 贴进对话。
 
@@ -149,7 +152,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id>
 
 ## 输出
 
-- 交接：整合了什么、写回了什么、推了还是停在本地。某一侧没有新内容要写明。
+- 交接：整合了什么、写回了什么、推了还是停在本地。某一侧没有新内容要写明。结束时写四行：主张、环境卡片、未做完的事、产出指针。没有的那类写「没有」。有「建议整理」就在这四行之后问一次。
 - 更新：确认过的差异（共享改了什么、还剩几条冲突、几条提议、本环境卡片是否更新），以及提交路径。
 - 接手：记忆、环境、任务三块。写明合并了什么、锚点有没有动、哪些没动。
 - 交接包：文件路径。写明没有推送。
