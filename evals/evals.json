@@ -83,9 +83,9 @@
     },
     {
       "id": "i04",
-      "query": "按云端记忆接手。（卡片上 topmind-x-article 0.4.8，本机是 0.4.6，没有 topmind-wechat-post，旧名 topmind-wechat 已停用）",
+      "query": "按云端记忆接手。（卡片上 demo-article 0.4.8，本机是 0.4.6，没有 demo-post，旧名 demo-legacy 已停用）",
       "expect": "triggered",
-      "checks": ["列出偏旧和已停用，并给出对应安装方式的命令", "不默认 npm i", "不自动安装；用户确认后就地升级，不留备份、不降级", "技能比对不阻断记忆合并"]
+      "checks": ["列出偏旧和已停用，并给出该技能自己的安装或更新命令", "来源读不到就不编命令", "不自动安装；用户确认后就地升级，不留备份、不降级", "技能比对不阻断记忆合并"]
     },
     {
       "id": "i05",
@@ -109,14 +109,12 @@
       "id": "n01",
       "query": "记住这个：我下周三出差",
       "expect": "not-triggered",
-      "handoff": "topmind-memory",
       "checks": ["单条记忆写入不走交接流程"]
     },
     {
       "id": "n02",
       "query": "把这周存的笔记整理一下",
       "expect": "not-triggered",
-      "handoff": "topmind-organize",
       "checks": ["整理笔记不是整理云端记忆"]
     },
     {
@@ -183,7 +181,7 @@
       "id": "k05",
       "query": "把这段灵感捕获到工作区，下篇稿子要用",
       "expect": "not-triggered",
-      "checks": ["交给 topmind-capture", "不写进 handoff knowledge/"]
+      "checks": ["不写进 knowledge/", "当前工作区的素材不进记忆仓库"]
     }
   ]
 }

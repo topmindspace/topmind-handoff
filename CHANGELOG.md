@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.7.0（2026-10-21）
+
+- 安装和更新：`npx @topmindspace/topmind-handoff@latest install` 把技能拷进技能目录，默认 `~/.agents/skills`。`update` 更新已安装的副本。版本相同打印 `Already up to date`，本机更旧就地覆盖并打印 `Upgraded`，本机更新则不降级。不留备份目录。
+- 文档：README 分开技能目录和记忆仓库。`examples/README.md` 给出仓库结构、一条操作规约、初始化写的自说明，并指向交接包示例。
+- 本技能单独使用。说明、接收和评测不再把别的技能写成必经步骤。
+
 ## 0.6.5（2026-10-16）
 
 - 技能升级规则和 topmind 安装器一致：卡片更新就就地覆盖，不留备份，告诉用户 `Upgraded <技能> <旧> -> <新>`；相同版本 `Already up to date`；本机更新时不降级。不再让人在技能目录里留 `技能名.bak-*` 副本（宿主会把它当成同名技能重复加载）。

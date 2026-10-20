@@ -9,18 +9,17 @@ description: >-
   这台以某场景为主、初始化 handoff、配置云端交接、交接手册、导出记忆、打包记忆、
   跨工具记忆同步、换工具、换AI、迁移记忆、带到新工具、多端同步、帮我做 handoff、
   帮我接收最新 handoff、只本地、export handoff、import handoff、沉淀经验、记个经验、收藏帖子、存提示词.
-  Do NOT use for 日常单条记忆写入（记住这个、更新我的情况 → topmind-memory）、
-  整理笔记（→ topmind-organize）、当前创作的素材捕获（→ topmind-capture）、出稿（→ topmind-write）、与交接无关的技能安装。
+  Do NOT use for 日常单条记忆写入（记住这个、更新我的情况）、整理本机笔记、当前工作区里的素材和灵感、出稿、与交接无关的安装。
 license: MIT
 compatibility: >-
   Any AI agent with file read/write and Python 3. Local compile needs no network.
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.6.5"
+  version: "0.7.0"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
-  updated: "2026-10-16"
+  updated: "2026-10-21"
   action_category: organize
   entrypoint: "false"
   tags: handoff, profile, memory-portability, onboarding, privacy
@@ -134,7 +133,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 ### 整理云端记忆
 
 用户说「整理云端记忆」才跑 `--organize`。压索引、标未复核、标未刷新，并列出待提炼。不改信箱，不撤回，不另开进程。没有定时任务，没有常驻进程。记忆仓库不加 CI，不做 Release。
-「把笔记整理一下」不是这句，交给 topmind-organize。
+「把笔记整理一下」不是这句。本技能只整理记忆仓库的索引。
 
 ### 这台以某场景为主
 
@@ -147,7 +146,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 - 读：拉取后按当前任务用 `rg -n "关键词" knowledge/` 查相关条目。不整体读入，不放进 `--startup` 投影和交接包。
 - 写：用户说「沉淀经验」「记个经验」「收藏帖子」「存提示词」，或踩到值得记的坑。先搜重复，有就改原条目；新条目加在文件顶部。写完单独提交并推送，不必跑编译。仓库还没有 `knowledge/` 时，编译只在升级技能旧模板说明时补齐缺的文件；已有文件从不覆盖。
 - 格式、两级目录和拆分规则只看仓库里的 `knowledge/README.md`，这里不另写一套。
-- 边界：跨环境可复用的经验、提示词、收藏进这里；当前创作的素材、灵感进工作区（topmind-capture）；偏好和事实仍走 `outbox/`。
+- 边界：跨环境可复用的经验、提示词、收藏进这里。只属于当前工作区的素材和灵感不写进 `knowledge/`。偏好和事实仍走 `outbox/`。
 - 不写凭据、隐私、他人信息、聊天记录。
 
 ## 输出

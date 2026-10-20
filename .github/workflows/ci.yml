@@ -11,6 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Installer tests
+        run: node --test tests/install.test.js
+
       - name: Privacy scan (no secrets / PII in skill files)
         run: |
           set -euo pipefail

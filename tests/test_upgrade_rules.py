@@ -21,9 +21,10 @@ class UpgradeRules(unittest.TestCase):
         env = self.read("references/environment.md")
         self.assertIn("Upgraded <技能> <旧> -> <新>", env)
         self.assertIn("Already up to date: <技能> <版本>", env)
+        self.assertIn("Downgraded <技能> <旧> -> <新>", env)
         self.assertIn("不降级", env)
-        self.assertIn("topmind-writing-skills@latest install", env)
-        self.assertIn("topmind-skills@latest update -g", env)
+        self.assertIn("npx @topmindspace/topmind-handoff@latest install", env)
+        self.assertIn("npx @topmindspace/topmind-handoff@latest update", env)
 
 
 if __name__ == "__main__":

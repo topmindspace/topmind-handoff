@@ -52,8 +52,8 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
           zip -r release-assets/topmind-handoff.zip \
-            SKILL.md references assets README.md LICENSE CHANGELOG.md package.json \
-            topmind_handoff scripts/compile_memory.py \
+            SKILL.md references assets examples README.md LICENSE CHANGELOG.md package.json \
+            topmind_handoff scripts/compile_memory.py bin \
             -x '.*' '*__pycache__*' '*.pyc'
           python3 - <<'PY'
           import zipfile
@@ -66,6 +66,8 @@ jobs:
               "topmind_handoff/admin.py",
               "topmind_handoff/package.py",
               "topmind_handoff/cli.py",
+              "bin/topmind-handoff.js",
+              "examples/README.md",
           ]
           missing = [item for item in required if item not in names]
           if missing:

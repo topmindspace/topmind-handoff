@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = [ROOT / 'SKILL.md', ROOT / 'README.md', *sorted((ROOT / 'references').glob('*.md')),
-        *sorted((ROOT / 'assets').glob('*.md'))]
+        *sorted((ROOT / 'assets').glob('*.md')), *sorted((ROOT / 'examples').glob('*.md'))]
 PATH_RE = re.compile(r'`((?:references|assets)/[\w./-]+\.md)`')
 LINK_RE = re.compile(r'\]\(([^)\s]+)\)')
 
