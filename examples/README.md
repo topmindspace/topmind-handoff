@@ -68,7 +68,7 @@ refreshed: 2026-10-21
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.7.0（npm:@topmindspace/topmind-handoff）
+- topmind-handoff 0.7.1（npm:@topmindspace/topmind-handoff）
 ```
 
 `role` 决定开工读取带上哪一个场景。字段说明在 [`references/environment.md`](../references/environment.md)。

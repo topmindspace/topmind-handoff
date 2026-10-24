@@ -104,4 +104,4 @@ knowledge/                       # 经验、收藏、提示词。不进编译
 
 ## 版本
 
-当前技能版本 `0.7.0`，交接包格式 `2`。更新记录见 [`CHANGELOG.md`](CHANGELOG.md)。
+当前技能版本 `0.7.1`，交接包格式 `2`。更新记录见 [`CHANGELOG.md`](CHANGELOG.md)。

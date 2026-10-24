@@ -18,7 +18,7 @@ override.pref-theme: 本环境用浅色终端
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.7.0（npm:@topmindspace/topmind-handoff）
+- topmind-handoff 0.7.1（npm:@topmindspace/topmind-handoff）
 ```
 
 - `role` 决定 `--startup` 带上哪一个场景。规则见 `references/compile.md`。

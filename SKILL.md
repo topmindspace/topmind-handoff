@@ -16,10 +16,10 @@ compatibility: >-
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.7.0"
+  version: "0.7.1"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
-  updated: "2026-10-21"
+  updated: "2026-10-24"
   action_category: organize
   entrypoint: "false"
   tags: handoff, profile, memory-portability, onboarding, privacy

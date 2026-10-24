@@ -1,6 +1,6 @@
 {
   "name": "@topmindspace/topmind-handoff",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "跨工具交接技能：私有 Git 里按环境追加操作，本机编译共享视图和场景视图，离线时用版本 2 交接包。npx 安装和更新。Cross-tool handoff skill with a local compiler and npx install/update.",
   "license": "MIT",
   "author": "TopMindSpace",

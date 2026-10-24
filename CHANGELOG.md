@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.7.1（2026-10-24）
+
+- 文档：交接包模板、示例和规格里的 `compiler` 行与 `--render` 实际输出一致；规格补上可选字段 `generator` 的说明。
+- 文档：README 的英文简介改写得更清楚。
+
 ## 0.7.0（2026-10-21）
 
 - 安装和更新：`npx @topmindspace/topmind-handoff@latest install` 把技能拷进技能目录，默认 `~/.agents/skills`。`update` 更新已安装的副本。版本相同打印 `Already up to date`，本机更旧就地覆盖并打印 `Upgraded`，本机更新则不降级。不留备份目录。

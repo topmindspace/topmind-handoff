@@ -54,8 +54,8 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "topmind-handoff 0.7.0"
-generator: "工具名 + topmind-handoff 0.7.0"
+compiler: "topmind-handoff 0.7.1"
+generator: "工具名 + topmind-handoff 0.7.1"
 ---
 ```
 
