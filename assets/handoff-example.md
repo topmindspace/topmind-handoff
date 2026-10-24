@@ -3,7 +3,7 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "示例助手 + topmind-handoff 0.7.0"
+compiler: "topmind-handoff 0.7.0"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff

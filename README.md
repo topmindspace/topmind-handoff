@@ -4,7 +4,7 @@
 
 技能只做这一件事。它不依赖别的技能，也不替你写日常备忘、整理笔记或出稿。
 
-English: a private git repo of per-origin outboxes. A local script compiles the shared view and one view per scenario. Offline tools get a version 2 Markdown package. Install and update with npx. No memory-repo CI, no Release, no stored token.
+English: cross-tool memory kept in your own private git repo. Each environment appends to its own outbox, and a local script compiles a shared view plus one view per scenario. Tools that cannot pull the repo get a version 2 Markdown package. Install and update with npx. The skill stores no token, and the memory repo needs no CI or Release.
 
 ## 安装和更新
 
