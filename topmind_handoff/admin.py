@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from topmind_handoff.compile import VIEW_ORDER as SLICE_ORDER
-from topmind_handoff.compile import build_compiled, compile_repo, render_status
+from topmind_handoff.compile import build_compiled, compile_repo, write_compiled_status
 from topmind_handoff.model import (
     CLUSTER_SIZE,
     ClaimResult,
@@ -626,41 +626,6 @@ def _compact_scope(
     return text
 
 
-def _mark_stale(card_path: Path, today: date) -> None:
-    raw = card_path.read_text(encoding="utf-8")
-    card = _card_refreshed(raw)
-    if card is None:
-        return
-    if (today - card).days < 90:
-        return
-    if raw.startswith("---"):
-        parts = raw.split("---", 2)
-        front = parts[1]
-        body = parts[2] if len(parts) > 2 else ""
-        if "stale:" not in front:
-            front = front.rstrip() + "\nstale: true\n"
-        else:
-            front = front.replace("stale: false", "stale: true")
-        if "未刷新" not in body:
-            body = body.rstrip() + "\n\n未刷新\n"
-        card_path.write_text(_nl("---" + front + "---" + body), encoding="utf-8")
-        return
-    extra = ""
-    if "stale: true" not in raw:
-        extra += "stale: true\n"
-    if "未刷新" not in raw:
-        extra += "未刷新\n"
-    if extra:
-        card_path.write_text(_nl(raw.rstrip() + "\n" + extra), encoding="utf-8")
-
-
-def _card_refreshed(raw: str) -> date | None:
-    for line in raw.splitlines():
-        if line.startswith("refreshed:"):
-            return parse_day(line.split(":", 1)[1].strip())
-    return None
-
-
 def write_index_views(repo: Path, compiled: Compiled, today: date | None, *, fit: bool) -> None:
     """Write one-line views. `fit` clusters slices that are past the startup budget.
 
@@ -712,15 +677,7 @@ def organize_repo(repo: Path, today: date | None = None) -> Compiled:
     before = {path.name: path.read_bytes() for path in sorted(outbox.glob("*.md"))} if outbox.is_dir() else {}
     compiled = build_compiled(repo)
     write_index_views(repo, compiled, today, fit=True)
-    environments = repo / "environments"
-    if environments.is_dir():
-        for path in sorted(environments.glob("*.md")):
-            _mark_stale(path, today)
-    # Cards may now be stale; rebuild status from the same outbox tips.
-    compiled = build_compiled(repo)
-    (repo / "STATUS.md").write_text(
-        render_status(compiled, today=today, index_fit="organized"), encoding="utf-8"
-    )
+    write_compiled_status(repo, compiled, today=today, index_fit="organized")
     after = {path.name: path.read_bytes() for path in sorted(outbox.glob("*.md"))} if outbox.is_dir() else {}
     if before != after:
         raise RuntimeError("整理改写了信箱")

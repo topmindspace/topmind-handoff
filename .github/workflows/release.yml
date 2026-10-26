@@ -66,6 +66,7 @@ jobs:
               "topmind_handoff/admin.py",
               "topmind_handoff/package.py",
               "topmind_handoff/cli.py",
+              "topmind_handoff/privacy.py",
               "bin/topmind-handoff.js",
               "examples/README.md",
           ]

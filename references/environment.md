@@ -18,12 +18,12 @@ override.pref-theme: 本环境用浅色终端
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.7.1（npm:@topmindspace/topmind-handoff）
+- topmind-handoff 0.7.2（npm:@topmindspace/topmind-handoff）
 ```
 
 - `role` 决定 `--startup` 带上哪一个场景。规则见 `references/compile.md`。
-- `refreshed` 是这台最后一次替换卡片的日期。满 90 天，整理时标「未刷新」，文件还在。
-- `override.<id>` 只进入 `--startup` 的投影。规则见 `references/compile.md`。
+- `refreshed` 是这台最后一次替换卡片的日期。满 90 天，STATUS 和投影标「未刷新」，整理不改写卡片。
+- `override.<id>` 只进入 `--startup` 的投影，不能覆盖 human 保护的身份或边界。规则见 `references/compile.md`。
 - 路径里的家目录写成 `~`。不写 token、cookie、未获同意的邮箱。
 - 看不到的环境不要写成「没有」。
 

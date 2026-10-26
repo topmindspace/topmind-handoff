@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 
+from topmind_handoff.privacy import assert_private_text
+
 ROOT = Path(__file__).resolve().parent.parent
 SLICES = ("identity", "boundaries", "preference", "project", "fact")
 SLICE_TITLE = {
@@ -74,6 +76,7 @@ def compiler_version() -> str:
 
 def safe_origin(origin: str) -> str:
     """One path segment. Reject absolute paths and any name that can leave the repo."""
+    assert_private_text(origin)
     name = origin.strip()
     if not name or name in {".", ".."} or any(mark in name for mark in ("/", "\\", "\x00")):
         raise ValueError("origin_id 必须是单个路径段")
@@ -294,13 +297,42 @@ def _authority_scope(op: Op) -> str:
     return op.scope
 
 
-def is_proposal(op: Op, authority: dict[str, str]) -> bool:
+def protected_claim_ids(ops: Iterable[Op]) -> set[str]:
+    """Human-authored protected identities keep protection across later labels/scopes."""
+    return {
+        op.claim_id for op in ops
+        if op.origin == "human" and op.kind in ("set", "retract")
+        and op.slice in ("identity", "boundaries")
+    }
+
+
+def unique_ops(ops: Iterable[Op]) -> list[Op]:
+    """Collapse identical replay; reject reuse of an id for different semantic content."""
+    seen: dict[str, tuple] = {}
+    result: list[Op] = []
+    for op in ops:
+        payload = (
+            op.origin, op.kind, op.claim_id, op.scope, op.slice, op.base,
+            tuple(sorted(set(op.closes))), op.at, op.text, op.detail,
+        )
+        if op.op_id in seen:
+            if seen[op.op_id] != payload:
+                raise ValueError("op_id 重复但操作内容或来源不同，请人工核对信箱")
+            continue
+        seen[op.op_id] = payload
+        result.append(op)
+    return result
+
+
+def is_proposal(op: Op, authority: dict[str, str], protected: set[str] | None = None) -> bool:
     """Return True when this op must not enter a view chain."""
     if op.kind == "propose":
         return True
     if op.kind not in ("set", "retract"):
         return True
     if op.slice in ("identity", "boundaries") and op.origin != "human":
+        return True
+    if op.claim_id in (protected or ()) and op.origin != "human":
         return True
     if op.scope.startswith("origin:"):
         target = op.scope.split(":", 1)[1]
@@ -313,17 +345,11 @@ def is_proposal(op: Op, authority: dict[str, str]) -> bool:
 
 
 def compile_ops(ops: list[Op], authority: dict[str, str]) -> tuple[dict[tuple[str, str], ClaimResult], list[Op]]:
-    """Compile a list of operations. Duplicate op_ids collapse to the first."""
-    seen: set[str] = set()
-    unique: list[Op] = []
-    for op in ops:
-        if op.op_id in seen:
-            continue
-        seen.add(op.op_id)
-        unique.append(op)
-
-    proposals = [op for op in unique if is_proposal(op, authority)]
-    applicable = [op for op in unique if not is_proposal(op, authority)]
+    """Compile operations with stable human protection and verified replay identity."""
+    unique = unique_ops(ops)
+    protected = protected_claim_ids(unique)
+    proposals = [op for op in unique if is_proposal(op, authority, protected)]
+    applicable = [op for op in unique if not is_proposal(op, authority, protected)]
     # A demoted op stays out of the view, but a later allowed set may use its op_id as base.
     anchors: dict[tuple[str, str], set[str]] = {}
     for op in proposals:

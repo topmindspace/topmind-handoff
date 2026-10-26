@@ -8,15 +8,18 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from topmind_handoff.compile import append_outbox, compile_repo, projection_body
+from topmind_handoff.compile import append_outbox, compile_repo, load_pieces, projection_body
 from topmind_handoff.model import (
     REVIEW_MARK,
     ROOT,
     compiler_version,
+    compile_ops,
     origin_markdown,
     parse_outbox,
     safe_origin,
+    unique_ops,
 )
+from topmind_handoff.privacy import assert_private_text
 
 APPENDIX_MARK = "本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。"
 ANCHOR_FIELDS = ("对本智能体的称呼", "称呼", "语言", "时区")
@@ -82,7 +85,9 @@ def render_package(repo: Path, origin: str, today: date | None = None) -> str:
         "```",
         "",
     ]
-    return "\n".join(lines)
+    rendered = "\n".join(lines)
+    assert_private_text(rendered)
+    return rendered
 
 
 def _ops_fence(package: str) -> re.Match[str] | None:
@@ -100,23 +105,13 @@ def _appendix_ops(package: str, origin: str):
     return parse_outbox(match.group(1), origin)
 
 
-def _known_ids(repo: Path) -> set[str]:
-    found: set[str] = set()
-    outbox = repo / "outbox"
-    if not outbox.is_dir():
-        return found
-    for path in outbox.glob("*.md"):
-        for op in parse_outbox(path.read_text(encoding="utf-8"), path.stem):
-            found.add(op.op_id)
-    return found
-
-
 def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list[str]:
     """List appendix ops this repo does not have. Write them only after confirmation.
 
     Existing outbox lines, other origins, and environment cards are left as they are.
     """
     repo = Path(repo)
+    assert_private_text(package)
     front = _front(package)
     version = front.get("handoff_version", "")
     if version != PACKAGE_VERSION:
@@ -124,8 +119,10 @@ def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list
     if not _has_ops_appendix(package):
         raise ValueError("交接包没有操作附录")
     origin = safe_origin(front.get("origin_id") or "unknown")
-    incoming = _appendix_ops(package, origin)
-    known = _known_ids(repo)
+    incoming = unique_ops(_appendix_ops(package, origin))
+    authority, _tips, _cards, existing = load_pieces(repo)
+    combined = unique_ops(existing + incoming)
+    known = {op.op_id for op in existing}
     added: list[str] = []
     blocks: list[str] = []
     for op in incoming:
@@ -134,6 +131,11 @@ def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list
         known.add(op.op_id)
         added.append(op.op_id)
         blocks.append(op.raw.rstrip("\n"))
+    if blocks:
+        claims, _proposals = compile_ops(combined, authority)
+        blocked = [op for result in claims.values() for op in result.unapplied if op.op_id in added]
+        if blocked:
+            raise ValueError("交接包缺少因果依赖或裁决不适用；请补齐依赖后重放，未写入文件")
     if not blocks or not confirmed:
         return added
     append_outbox(repo, origin, origin, blocks)
@@ -217,6 +219,7 @@ def _is_tombstone(text: str) -> bool:
 
 def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
     """Diff view lines into host memory. Existing text and anchors are not replaced."""
+    assert_private_text(package)
     front = _front(package)
     version = front.get("handoff_version", "")
     if package.startswith("---"):

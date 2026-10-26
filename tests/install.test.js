@@ -56,6 +56,8 @@ test('install copies the skill and a second run stays current', () => {
   assert.equal(fs.existsSync(path.join(dest, 'scripts', 'compile_memory.py')), true);
   assert.equal(fs.existsSync(path.join(dest, 'examples', 'README.md')), true);
   assert.equal(fs.existsSync(path.join(dest, 'topmind_handoff', 'cli.py')), true);
+  assert.equal(fs.existsSync(path.join(dest, 'topmind_handoff', 'privacy.py')), true);
+  assert.equal(fs.existsSync(path.join(dest, 'topmind_handoff', '__pycache__')), false);
   assert.equal(fs.existsSync(path.join(dest, 'tests')), false);
   assert.equal(fs.existsSync(path.join(dest, 'bin')), false);
   const again = run(['install'], home);
@@ -105,4 +107,18 @@ test('--to installs into that skills directory', () => {
   assert.equal(result.status, 0, result.stderr);
   assert.equal(fs.existsSync(path.join(root, 'topmind-handoff', 'SKILL.md')), true);
   assert.equal(fs.existsSync(path.join(home, '.agents', 'skills')), false);
+});
+
+test('npm payload includes runtime sources and excludes Python bytecode', (t) => {
+  const temporary = tempHome();
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--cache', path.join(temporary, 'npm-cache')], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const files = JSON.parse(result.stdout)[0].files.map((entry) => entry.path);
+  assert.equal(files.includes('topmind_handoff/privacy.py'), true);
+  assert.equal(files.includes('topmind_handoff/compile.py'), true);
+  assert.equal(files.some((name) => name.includes('__pycache__') || name.endsWith('.pyc')), false);
 });

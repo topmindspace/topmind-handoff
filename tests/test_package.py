@@ -343,7 +343,7 @@ origin_id: Grok-demo-sync
   scope: shared
   base: none
   at: 2026-10-12
-  text: 包里的旧句
+  text: 本地事实
 
 - op_id: Grok-demo-sync#2
   op: retract

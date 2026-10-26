@@ -223,11 +223,14 @@ refreshed: {fresh}
             self.assertNotIn("- 项目新例 {id:project-new} （未复核）", slim)
             self.assertFalse((root / "views" / "scenario-retired.md").exists())
             card = (root / "environments" / "Grok-demo-sync.md").read_text(encoding="utf-8")
-            self.assertIn("未刷新", card)
+            self.assertNotIn("未刷新", card)
+            status = (root / "STATUS.md").read_text(encoding="utf-8")
+            self.assertIn("环境卡片 `Grok-demo-sync` 未刷新", status)
             self.assertTrue((root / "environments" / "Grok-demo-sync.md").is_file())
             aged_card = (root / "environments" / "Aged-demo-sync.md").read_text(encoding="utf-8")
             fresh_card = (root / "environments" / "Fresh-demo-sync.md").read_text(encoding="utf-8")
-            self.assertIn("未刷新", aged_card)
+            self.assertNotIn("未刷新", aged_card)
+            self.assertIn("环境卡片 `Aged-demo-sync` 未刷新", status)
             self.assertNotIn("未刷新", fresh_card)
 
     def test_organize_archives_short_facts_when_the_index_is_over_budget(self) -> None:
@@ -492,6 +495,9 @@ override.pref-theme: 覆盖句
             secret = base / "secret.md"
             secret.write_text("SECRET_OUTSIDE\n", encoding="utf-8")
             shared_path.write_text(shared + "- 见 facts/../../secret.md\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                startup_read(root, "Grok-demo-sync")
+            compile_repo(root)
             shared = shared_path.read_text(encoding="utf-8")
             started = startup_read(root, "Grok-demo-sync")
             self.assertIn("- 覆盖句 {id:pref-theme}", started)
@@ -707,7 +713,7 @@ refreshed: {(today - timedelta(days=89)).isoformat()}
             self.assertIn("引用 `fact-join` 提到当前说法 `fact-cloud`。不撤回，不改写。", status)
             self.assertIn("环境卡片 `Aged-demo-sync` 未刷新。", status)
             self.assertNotIn("环境卡片 `Fresh-demo-sync` 未刷新。", status)
-            self.assertIn("未刷新", (root / "environments" / "Aged-demo-sync.md").read_text(encoding="utf-8"))
+            self.assertNotIn("未刷新", (root / "environments" / "Aged-demo-sync.md").read_text(encoding="utf-8"))
             self.assertTrue((root / "environments" / "Aged-demo-sync.md").is_file())
             self.assertNotIn("未刷新", (root / "environments" / "Fresh-demo-sync.md").read_text(encoding="utf-8"))
             compile_repo(root)

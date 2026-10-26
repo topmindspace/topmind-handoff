@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from datetime import date
 from pathlib import Path
@@ -26,11 +28,14 @@ from topmind_handoff.model import (
     scenario_filename,
     parse_card,
     parse_outbox,
+    protected_claim_ids,
     safe_origin,
     scenario_names,
     slice_title,
+    unique_ops,
     view_slice_order,
 )
+from topmind_handoff.privacy import assert_private_text
 
 VIEW_ORDER = ("identity", "boundaries", "preference", "project", "fact")
 _REVIEW_AS_OF = re.compile(r"^review_as_of:\s*(\d{4}-\d{2}-\d{2})\s*$", re.M)
@@ -44,21 +49,29 @@ def _ensure_nl(text: str) -> str:
 
 def load_pieces(repo: Path) -> tuple[dict[str, str], dict[str, str], dict[str, Card], list[Op]]:
     authority_path = repo / "authority.md"
-    authority = parse_authority(authority_path.read_text(encoding="utf-8")) if authority_path.is_file() else {}
+    authority = parse_authority(_read_source(authority_path)) if authority_path.is_file() else {}
     tips: dict[str, str] = {}
     ops: list[Op] = []
     outbox = repo / "outbox"
     if outbox.is_dir():
         for path in sorted(outbox.glob("*.md")):
-            file_ops = parse_outbox(path.read_text(encoding="utf-8"), path.stem)
+            file_ops = parse_outbox(_read_source(path), path.stem)
             tips[path.stem] = file_ops[-1].op_id if file_ops else ""
             ops.extend(file_ops)
     cards: dict[str, Card] = {}
     environments = repo / "environments"
     if environments.is_dir():
         for path in sorted(environments.glob("*.md")):
-            cards[path.stem] = parse_card(path.read_text(encoding="utf-8"), path.stem)
+            cards[path.stem] = parse_card(_read_source(path), path.stem)
     return authority, tips, cards, ops
+
+
+def _read_source(path: Path) -> str:
+    if path.resolve().parent != path.parent.resolve():
+        raise ValueError("权威输入路径越界，拒绝读取")
+    text = path.read_text(encoding="utf-8")
+    assert_private_text(text)
+    return text
 
 
 def build_compiled(repo: Path) -> Compiled:
@@ -176,6 +189,7 @@ def render_status(compiled: Compiled, today: date | None = None, *, index_fit: s
         if len(result.heads) == 1 and result.heads[0].kind == "set"
     )
     conflict_count = sum(1 for result in compiled.claims.values() if result.conflict)
+    unapplied = [op for result in compiled.claims.values() for op in result.unapplied]
     lines.extend(
         [
             "",
@@ -183,6 +197,7 @@ def render_status(compiled: Compiled, today: date | None = None, *, index_fit: s
             f"- facts: {fact_count}",
             f"- conflicts: {conflict_count}",
             f"- proposals: {len(compiled.proposals)}",
+            f"- unapplied: {len(unapplied)}",
             "",
             "## conflicts",
         ]
@@ -207,6 +222,14 @@ def render_status(compiled: Compiled, today: date | None = None, *, index_fit: s
             lines.append(f"  text: {op.text}")
     else:
         lines.append("（无）")
+    lines.extend(["", "## unapplied"])
+    for op in sorted(unapplied, key=lambda item: item.op_id):
+        lines.extend([
+            f"- op_id: {op.op_id}", f"  id: {op.claim_id}", f"  scope: {op.scope}",
+            "  reason: base 或 closes 未满足当前因果链，需要核对依赖或裁决",
+        ])
+    if not unapplied:
+        lines.append("（无）")
     lines.extend(["", "## 待提炼"])
     refine = refinement_lines(
         list(compiled.claims.values()),
@@ -223,7 +246,7 @@ def render_status(compiled: Compiled, today: date | None = None, *, index_fit: s
             lines.append(f"- id: {origin}")
             lines.append(f"  tip: {compiled.tips.get(origin) or '-'}")
             lines.append(f"  refreshed: {card.refreshed if card else ''}")
-            lines.append(f"  stale: {'true' if card and card.stale else 'false'}")
+            lines.append(f"  stale: {'true' if card and card_is_due(card, today) else 'false'}")
     else:
         lines.append("（无）")
     lines.append("")
@@ -277,9 +300,7 @@ def compile_repo(repo: Path, today: date | None = None) -> Compiled:
                 path.unlink()
         for name, text in rendered.items():
             (views / name).write_text(text, encoding="utf-8")
-    (repo / "STATUS.md").write_text(
-        render_status(compiled, today=today, index_fit=fit), encoding="utf-8"
-    )
+    write_compiled_status(repo, compiled, today=today, index_fit=fit)
     # Local import: admin imports this module. Only a stock README this skill wrote is replaced.
     from topmind_handoff.admin import upgrade_stock_readme
 
@@ -310,29 +331,79 @@ def re_tip(line: str) -> tuple[str, str] | None:
     return match.group(1).strip(), match.group(2).strip()
 
 
+def _digest(parts: dict) -> str:
+    payload = json.dumps(parts, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _file_digest(path: Path) -> str:
+    if path.resolve().parent != path.parent.resolve():
+        raise ValueError("编译文件路径越界，视图无效，需要重新编译")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _input_digest(repo: Path) -> str:
+    files = [repo / "authority.md"]
+    for directory in ("outbox", "environments"):
+        files.extend(sorted((repo / directory).glob("*.md")))
+    inputs = {path.relative_to(repo).as_posix(): _file_digest(path) if path.is_file() else None for path in files}
+    engine = {path.name: _file_digest(path) for path in sorted(Path(__file__).parent.glob("*.py"))}
+    return _digest({"inputs": inputs, "engine": engine, "version": compiler_version()})
+
+
+def _output_digest(repo: Path, status: str) -> str:
+    status = re.sub(r"^output_digest:.*\n?", "", status, flags=re.M)
+    outputs = {"STATUS.md": hashlib.sha256(status.encode("utf-8")).hexdigest()}
+    for directory in ("views", "facts"):
+        for path in sorted((repo / directory).glob("*.md")):
+            outputs[path.relative_to(repo).as_posix()] = _file_digest(path)
+    return _digest(outputs)
+
+
+def write_compiled_status(repo: Path, compiled: Compiled, today: date | None, *, index_fit: str) -> None:
+    """Bind all authoritative inputs, engine and generated files to one compilation."""
+    status = render_status(compiled, today=today, index_fit=index_fit)
+    status += f"\ninput_digest: {_input_digest(repo)}\n"
+    status += f"output_digest: {_output_digest(repo, status)}\n"
+    (repo / "STATUS.md").write_text(status, encoding="utf-8")
+
+
 def status_is_valid(repo: Path) -> tuple[bool, str]:
-    """A status file is valid only when its tips equal the outbox tips."""
+    """Validate authoritative content, compiler, STATUS and generated files."""
     repo = Path(repo)
     status_path = repo / "STATUS.md"
     if not status_path.is_file():
         return False, "STATUS.md 不存在，视图无效，需要重新编译"
-    _authority, tips, _cards, _ops = load_pieces(repo)
-    recorded = _status_tips(status_path.read_text(encoding="utf-8"))
-    if recorded != tips:
-        return False, "STATUS 的信箱末尾与 outbox 不一致，视图无效，需要重新编译"
-    return True, "STATUS 与信箱末尾一致"
+    try:
+        _authority, tips, _cards, _ops = load_pieces(repo)
+        status = status_path.read_text(encoding="utf-8")
+        if _status_tips(status) != tips:
+            return False, "STATUS 的信箱末尾与 outbox 不一致，视图无效，需要重新编译"
+        inputs = re.findall(r"^input_digest: ([0-9a-f]{64})$", status, re.M)
+        outputs = re.findall(r"^output_digest: ([0-9a-f]{64})$", status, re.M)
+        if len(inputs) != 1 or len(outputs) != 1:
+            return False, "STATUS 缺少完整性校验，视图无效，需要重新编译"
+        if inputs[0] != _input_digest(repo) or outputs[0] != _output_digest(repo, status):
+            return False, "编译输入或产物内容已变化，视图无效，需要重新编译"
+    except (ValueError, OSError) as exc:
+        return False, f"视图无效：{exc}"
+    return True, "STATUS、权威输入与编译产物内容一致"
 
 
 def append_outbox(repo: Path, actor: str, origin: str, blocks: list[str]) -> Path:
     """Append to one origin's outbox. A different actor is refused and nothing is written."""
+    assert_private_text(actor)
     dest = origin_markdown(Path(repo) / "outbox", origin)
     origin_name = dest.name[: -len(".md")]
     if actor != origin_name:
         raise PermissionError(f"{actor} 只能追加自己的信箱 {origin_name}")
     if not blocks:
         return dest
-    dest.parent.mkdir(parents=True, exist_ok=True)
     existing = dest.read_text(encoding="utf-8") if dest.is_file() else f"# outbox {origin_name}\n"
+    assert_private_text(existing + "\n".join(blocks))
+    _authority, _tips, _cards, known = load_pieces(Path(repo))
+    unique_ops(known + parse_outbox("\n".join(blocks), origin_name))
+    dest.parent.mkdir(parents=True, exist_ok=True)
     if not existing.endswith("\n"):
         existing += "\n"
     dest.write_text(existing + "\n".join(blocks) + "\n", encoding="utf-8")
@@ -341,10 +412,12 @@ def append_outbox(repo: Path, actor: str, origin: str, blocks: list[str]) -> Pat
 
 def save_environment_card(repo: Path, actor: str, origin: str, content: str) -> Path:
     """Replace one origin's environment card. Other origins are refused."""
+    assert_private_text(actor)
     dest = origin_markdown(Path(repo) / "environments", origin)
     origin = dest.name[: -len(".md")]
     if actor != origin:
         raise PermissionError(f"{actor} 只能替换自己的环境卡片 {origin}")
+    assert_private_text(content)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(_ensure_nl(content), encoding="utf-8")
     return dest
@@ -606,18 +679,25 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
     """
     repo = Path(repo)
     origin = safe_origin(origin)
+    use_views = (repo / "STATUS.md").is_file()
+    if use_views:
+        valid, message = status_is_valid(repo)
+        if not valid:
+            raise ValueError(message)
     compiled = build_compiled(repo)
     if today is None:
         today = stored_review_today(repo)
     views = repo / "views"
     rendered = render_views(compiled, inline_detail=False, today=today)
     shared_path = views / "shared.md"
-    if shared_path.is_file() and _path_inside(shared_path, views):
+    if use_views and shared_path.is_file() and _path_inside(shared_path, views):
         shared = shared_path.read_text(encoding="utf-8")
     else:
         shared = rendered["shared.md"]
     card = compiled.cards.get(origin)
-    overrides = card.overrides if card else {}
+    _authority, _tips, _cards, source_ops = load_pieces(repo)
+    protected = protected_claim_ids(source_ops)
+    overrides = {cid: text for cid, text in (card.overrides.items() if card else ()) if cid not in protected}
     projected = _without_claim_details(
         _label_text(
             _project_shared(repo, shared, overrides),
@@ -630,7 +710,7 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
     scenario_path = views / filename if filename else None
     if scenario_path is not None and not _path_inside(scenario_path, views):
         scenario_path = None
-    if scenario_path is not None and scenario_path.is_file():
+    if use_views and scenario_path is not None and scenario_path.is_file():
         scenario = scenario_path.read_text(encoding="utf-8")
     elif filename:
         scenario = rendered.get(filename, "# 场景\n\n（无）\n")
@@ -647,6 +727,8 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
     visible.extend(_results_for(compiled, f"origin:{origin}"))
     refine = refinement_lines(visible, compiled.cards, today, known_ids=_current_ids(compiled))
     parts = [
+        f"复核基准：{today.isoformat() if today else '未指定'}",
+        "",
         "## 冲突（与本环境有关）",
         _conflicts_for_origin(compiled, origin).rstrip("\n"),
         "",
@@ -669,6 +751,11 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
             "",
         ]
     )
+    pending = [op for result in visible for op in result.unapplied]
+    if pending:
+        parts.extend(["## 未应用", ""])
+        parts.extend(f"- {op.op_id}：base 或 closes 未满足当前因果链" for op in pending)
+        parts.append("")
     advice = organize_advice(projected, scenario)
     if advice:
         parts.extend([advice.rstrip("\n"), ""])
@@ -690,7 +777,7 @@ def _also_scenario(repo: Path, origin: str, also: str, today: date | None) -> st
     views = repo / "views"
     path = views / filename if filename else None
     rendered = render_views(compiled, inline_detail=False, today=today)
-    if path is not None and path.is_file() and _path_inside(path, views):
+    if (repo / "STATUS.md").is_file() and path is not None and path.is_file() and _path_inside(path, views):
         text = path.read_text(encoding="utf-8")
     elif filename:
         text = rendered.get(filename, f"# 场景：{also}\n\n（无）\n")

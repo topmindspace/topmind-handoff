@@ -54,8 +54,8 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "topmind-handoff 0.7.1"
-generator: "工具名 + topmind-handoff 0.7.1"
+compiler: "topmind-handoff 0.7.2"
+generator: "工具名 + topmind-handoff 0.7.2"
 ---
 ```
 
@@ -74,6 +74,8 @@ generator: "工具名 + topmind-handoff 0.7.1"
 3. **操作附录**：`## 10. 操作附录（已反映在上文视图中）`。里面是这个环境信箱里的操作。第一句写明附录是账本，不是新事实。接收方按 `op_id` 去重重放。没确认不写文件。确认后只追加还没有的 `op_id`，不删已有行。已经有的 `op_id` 再放一次，视图不变。没有这段附录，或 `handoff_version` 不是 `"2"`，或没写版本，都停下，不写文件。
 
 ## 写入本工具时
+
+账本重放前校验隐私、同 op_id 的内容与来源，以及 base / closes 依赖。不满足时不写文件。v2 附录只有本来源，正文完整可读不代表全新接收账本已具备全部依赖。正文预览与账本重放是不同能力。
 
 列表项用 `{id:xxxx}` 标明 id。这个记号在行尾，或者后面只跟一个「（未复核）」。后面这个词是复核标签，不是正文，也不取消 id。没有 id 的条目不自动写入。正文与本地完全相同就当已经有了，其余列出来问。
 
