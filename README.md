@@ -76,6 +76,7 @@ references/export.md             # 人要做的写入步骤
 references/environment.md        # 环境卡片、安装和升级
 references/tool-adapters.md      # 写到各工具的哪个文件
 references/privacy.md            # 什么不能写
+assets/cover.jpg                 # 仓库封面图
 assets/handoff-template.md       # 交接包空模板
 assets/handoff-example.md        # 交接包示例
 examples/README.md               # 记忆仓库结构、一条规约、自说明
