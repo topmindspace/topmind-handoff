@@ -909,21 +909,10 @@ refreshed: 2026-10-12
         self.assertNotIn("事实", _heading_above(started, "环境步骤只在本环境"))
         self.assertNotIn("环境步骤只在本环境", (self.root / "views" / "shared.md").read_text(encoding="utf-8"))
 
-    def test_stock_readme_upgrades_and_a_personal_note_stays(self) -> None:
-        from topmind_handoff.admin import KNOWN_STOCK_READMES, memory_readme
-
+    def test_compile_leaves_readme_and_outbox_untouched(self) -> None:
         write(self.root, "outbox/Grok-demo-sync.md", "# outbox Grok-demo-sync\n")
         before = (self.root / "outbox" / "Grok-demo-sync.md").read_bytes()
-        write(self.root, "README.md", KNOWN_STOCK_READMES[0])
-        compile_repo(self.root)
-        readme = (self.root / "README.md").read_text(encoding="utf-8")
-        self.assertEqual(readme, memory_readme())
-        self.assertIn("称呼：", readme)
-        self.assertIn("base: none", readme)
-        self.assertEqual((self.root / "outbox" / "Grok-demo-sync.md").read_bytes(), before)
-        compile_repo(self.root)
-        self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), readme)
-        noted = KNOWN_STOCK_READMES[1] + "人加的一句。\n"
+        noted = "# 云端记忆\n\n人加的一句。\n"
         write(self.root, "README.md", noted)
         compile_repo(self.root)
         self.assertEqual((self.root / "README.md").read_text(encoding="utf-8"), noted)

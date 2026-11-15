@@ -20,6 +20,7 @@ from topmind_handoff.model import (
     Op,
     compile_ops,
     compiler_version,
+    is_proposal,
     origin_markdown,
     over_budget,
     parse_authority,
@@ -29,7 +30,9 @@ from topmind_handoff.model import (
     parse_card,
     parse_outbox,
     protected_claim_ids,
+    safe_claim_id,
     safe_origin,
+    safe_scope,
     scenario_names,
     slice_title,
     unique_ops,
@@ -301,10 +304,6 @@ def compile_repo(repo: Path, today: date | None = None) -> Compiled:
         for name, text in rendered.items():
             (views / name).write_text(text, encoding="utf-8")
     write_compiled_status(repo, compiled, today=today, index_fit=fit)
-    # Local import: admin imports this module. Only a stock README this skill wrote is replaced.
-    from topmind_handoff.admin import upgrade_stock_readme
-
-    upgrade_stock_readme(repo)
     return compiled
 
 
@@ -655,6 +654,16 @@ def _without_claim_details(text: str) -> str:
     return _ensure_nl("\n".join(kept))
 
 
+def _strip_view_title(text: str) -> str:
+    """Remove a leading `# ...` document title when embedding a view inside a projection section."""
+    lines = text.splitlines()
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+        while lines and not lines[0].strip():
+            lines = lines[1:]
+    return _ensure_nl("\n".join(lines)) if lines else "（无）\n"
+
+
 def organize_advice(shared: str, scenario: str) -> str:
     """Prompt text when an index is past the startup budget. It does not write or retract."""
     notes: list[str] = []
@@ -733,10 +742,10 @@ def projection_body(repo: Path, origin: str, today: date | None = None) -> str:
         _conflicts_for_origin(compiled, origin).rstrip("\n"),
         "",
         "## 共享",
-        projected.rstrip("\n"),
+        _strip_view_title(projected).rstrip("\n"),
         "",
         f"## 场景：{role or '无'}",
-        scenario.rstrip("\n"),
+        _strip_view_title(scenario).rstrip("\n"),
         "",
     ]
     if origin_text:
@@ -786,7 +795,7 @@ def _also_scenario(repo: Path, origin: str, also: str, today: date | None) -> st
     text = _without_claim_details(
         _label_text(text, _scope_heads(compiled, f"scenario:{also}"), today)
     )
-    return _ensure_nl(f"## 另带场景：{also}\n\n{text.rstrip()}")
+    return _ensure_nl(f"## 另带场景：{also}\n\n{_strip_view_title(text).rstrip()}")
 
 
 def startup_read(repo: Path, origin: str, today: date | None = None, also: str | None = None) -> str:
@@ -802,7 +811,7 @@ def startup_read(repo: Path, origin: str, today: date | None = None, also: str |
         extra = _also_scenario(repo, origin, also, today).rstrip("\n")
         if extra:
             body = f"{body}\n\n{extra}"
-    return _ensure_nl(f"# 开工读取（{origin})\n\n{body}")
+    return _ensure_nl(f"# 开工读取（{origin}）\n\n{body}")
 
 
 def open_claim(repo: Path, claim_id: str) -> str:
@@ -857,3 +866,305 @@ def _open_head(head: Op, today: date | None) -> list[str]:
         lines.append("  detail: |")
         lines.extend(f"    {line}" for line in head.detail.splitlines())
     return lines
+
+
+def next_op_id(repo: Path, origin: str) -> str:
+    """Compute the next sequential `<origin>#<N>` id without colliding with existing ops."""
+    repo = Path(repo)
+    origin = safe_origin(origin)
+    _authority, _tips, _cards, known = load_pieces(repo)
+    used = {op.op_id for op in known}
+    pattern = re.compile(rf"^{re.escape(origin)}#(\d+)$")
+    max_seq = 0
+    for oid in used:
+        match = pattern.match(oid)
+        if match:
+            max_seq = max(max_seq, int(match.group(1)))
+    seq = max_seq + 1
+    while f"{origin}#{seq}" in used:
+        seq += 1
+    return f"{origin}#{seq}"
+
+
+def _format_op_block(
+    *,
+    op_id: str,
+    kind: str,
+    claim_id: str,
+    scope: str,
+    slice_name: str,
+    base: str | None,
+    closes: tuple[str, ...] = (),
+    at: str,
+    text: str,
+    detail: str = "",
+) -> str:
+    cleaned_text = text.strip()
+    if not cleaned_text or "\n" in cleaned_text or "\r" in cleaned_text:
+        raise ValueError("text 必须是非空的单行文本；多行说明请放入 detail")
+    lines = [
+        f"- op_id: {op_id}",
+        f"  op: {kind}",
+        f"  id: {claim_id}",
+        f"  scope: {scope}",
+        f"  slice: {slice_name}",
+        f"  base: {base or 'none'}",
+    ]
+    if closes:
+        lines.append(f"  closes: [{', '.join(closes)}]")
+    lines.append(f"  at: {at}")
+    lines.append(f"  text: {cleaned_text}")
+    cleaned_detail = detail.strip("\n")
+    if cleaned_detail.strip():
+        lines.append("  detail: |")
+        for dline in cleaned_detail.splitlines():
+            lines.append(f"    {dline}")
+    return "\n".join(lines)
+
+
+def record_set(
+    repo: Path,
+    *,
+    origin: str,
+    claim_id: str,
+    text: str,
+    scope: str = "shared",
+    slice_name: str | None = None,
+    base: str | None = None,
+    detail: str = "",
+    today: date | None = None,
+) -> str:
+    """Append a `set` operation with automatic `op_id` and causal `base`, then compile."""
+    repo = Path(repo)
+    origin = safe_origin(origin)
+    claim_id = safe_claim_id(claim_id)
+    scope = safe_scope(scope)
+    if scope.startswith("origin:") and scope != f"origin:{origin}":
+        raise ValueError(f"{origin} 不能写入其他环境的专属范围 {scope}")
+    compiled = build_compiled(repo)
+    result = compiled.claims.get((scope, claim_id))
+    inferred_slice = (
+        slice_name.strip()
+        if slice_name and slice_name.strip()
+        else (result.heads[0].slice if (result is not None and result.heads) else "fact")
+    )
+    at_day = today or stored_review_today(repo) or date.today()
+    if base is None:
+        if result is not None and len(result.heads) > 1:
+            heads_str = ", ".join(h.op_id for h in result.heads)
+            raise ValueError(f"主张 {claim_id} 在 {scope} 存在未裁决冲突（{heads_str}），请先用 --resolve 裁决")
+        if result is not None and len(result.heads) == 1:
+            head = result.heads[0]
+            if (
+                head.kind == "set"
+                and head.text == text.strip()
+                and head.detail == detail.strip("\n")
+                and head.slice == inferred_slice
+                and head.at == at_day.isoformat()
+            ):
+                compile_repo(repo, today=today)
+                return head.op_id
+            resolved_base: str | None = head.op_id
+        else:
+            resolved_base = None
+    else:
+        raw_base = base.strip()
+        resolved_base = None if raw_base in ("", "none") else raw_base
+    op_id = next_op_id(repo, origin)
+    block = _format_op_block(
+        op_id=op_id,
+        kind="set",
+        claim_id=claim_id,
+        scope=scope,
+        slice_name=inferred_slice,
+        base=resolved_base,
+        at=at_day.isoformat(),
+        text=text,
+        detail=detail,
+    )
+    append_outbox(repo, origin, origin, [block])
+    compile_repo(repo, today=today)
+    return op_id
+
+
+def _assert_direct_write_allowed(
+    repo: Path,
+    compiled: Compiled,
+    *,
+    origin: str,
+    kind: str,
+    claim_id: str,
+    scope: str,
+    slice_name: str,
+) -> None:
+    _authority, _tips, _cards, source_ops = load_pieces(repo)
+    protected = protected_claim_ids(source_ops)
+    probe = Op(
+        op_id=f"{origin}#probe",
+        kind=kind,
+        claim_id=claim_id,
+        scope=scope,
+        slice=slice_name,
+        base=None,
+        closes=(),
+        at="",
+        text="",
+        detail="",
+        origin=origin,
+        raw="",
+    )
+    if is_proposal(probe, compiled.authority, protected):
+        raise ValueError(f"{origin} 无权直接修改 {scope} 的 {claim_id}，请使用有权限的 origin（如 human 或场景主人）")
+
+
+def record_retract(
+    repo: Path,
+    *,
+    origin: str,
+    claim_id: str,
+    scope: str = "shared",
+    text: str = "已撤回",
+    today: date | None = None,
+) -> str:
+    """Append a `retract` operation against current head(s) to retire outdated state, then compile."""
+    repo = Path(repo)
+    origin = safe_origin(origin)
+    claim_id = safe_claim_id(claim_id)
+    scope = safe_scope(scope)
+    compiled = build_compiled(repo)
+    result = compiled.claims.get((scope, claim_id))
+    if result is None or not result.heads or result.retracted:
+        raise ValueError(f"主张 {claim_id} 在 {scope} 当前没有生效内容，无需撤回")
+    inferred_slice = result.heads[0].slice
+    _assert_direct_write_allowed(
+        repo,
+        compiled,
+        origin=origin,
+        kind="retract",
+        claim_id=claim_id,
+        scope=scope,
+        slice_name=inferred_slice,
+    )
+    if len(result.heads) == 1:
+        resolved_base: str | None = result.heads[0].op_id
+        closes: tuple[str, ...] = ()
+    else:
+        resolved_base = None
+        closes = tuple(h.op_id for h in result.heads)
+    op_id = next_op_id(repo, origin)
+    at_day = today or stored_review_today(repo) or date.today()
+    block = _format_op_block(
+        op_id=op_id,
+        kind="retract",
+        claim_id=claim_id,
+        scope=scope,
+        slice_name=inferred_slice,
+        base=resolved_base,
+        closes=closes,
+        at=at_day.isoformat(),
+        text=text,
+    )
+    append_outbox(repo, origin, origin, [block])
+    compile_repo(repo, today=today)
+    return op_id
+
+
+def record_resolve(
+    repo: Path,
+    *,
+    origin: str,
+    claim_id: str,
+    text: str,
+    scope: str = "shared",
+    slice_name: str | None = None,
+    detail: str = "",
+    today: date | None = None,
+) -> str:
+    """Close all current conflicting heads on `(scope, claim_id)` into one resolved head, then compile."""
+    repo = Path(repo)
+    origin = safe_origin(origin)
+    claim_id = safe_claim_id(claim_id)
+    scope = safe_scope(scope)
+    compiled = build_compiled(repo)
+    result = compiled.claims.get((scope, claim_id))
+    if result is None or len(result.heads) < 2:
+        raise ValueError(f"主张 {claim_id} 在 {scope} 当前没有分叉冲突，无需裁决")
+    inferred_slice = (
+        slice_name.strip()
+        if slice_name and slice_name.strip()
+        else result.heads[0].slice
+    )
+    _assert_direct_write_allowed(
+        repo,
+        compiled,
+        origin=origin,
+        kind="set",
+        claim_id=claim_id,
+        scope=scope,
+        slice_name=inferred_slice,
+    )
+    closes = tuple(h.op_id for h in result.heads)
+    op_id = next_op_id(repo, origin)
+    at_day = today or stored_review_today(repo) or date.today()
+    block = _format_op_block(
+        op_id=op_id,
+        kind="set",
+        claim_id=claim_id,
+        scope=scope,
+        slice_name=inferred_slice,
+        base=None,
+        closes=closes,
+        at=at_day.isoformat(),
+        text=text,
+        detail=detail,
+    )
+    append_outbox(repo, origin, origin, [block])
+    compile_repo(repo, today=today)
+    return op_id
+
+
+def record_work(
+    repo: Path,
+    *,
+    origin: str,
+    text: str = "",
+    topic: str | None = None,
+    scope: str | None = None,
+    local: bool = False,
+    done: bool = False,
+    detail: str = "",
+    today: date | None = None,
+) -> str:
+    """Record or retire per-origin current work (default) or a named topic/project handoff."""
+    repo = Path(repo)
+    origin = safe_origin(origin)
+    resolved_scope = f"origin:{origin}" if local else safe_scope(scope or "shared")
+    if topic and topic.strip():
+        slug = safe_origin(topic.strip())
+        claim_id = f"project.{slug}"
+    else:
+        claim_id = "work.current" if local else f"work.{origin}"
+    if done:
+        return record_retract(
+            repo,
+            origin=origin,
+            claim_id=claim_id,
+            scope=resolved_scope,
+            text=text.strip() or "已完成并归档",
+            today=today,
+        )
+    if not text or not text.strip():
+        raise ValueError("记录当前工作或专项交接需要提供 --text，或使用 --done 标记完结")
+    formatted = text.strip()
+    if not (topic and topic.strip()) and not local and not formatted.startswith("["):
+        formatted = f"[{origin}] {formatted}"
+    return record_set(
+        repo,
+        origin=origin,
+        claim_id=claim_id,
+        text=formatted,
+        scope=resolved_scope,
+        slice_name="project",
+        detail=detail,
+        today=today,
+    )

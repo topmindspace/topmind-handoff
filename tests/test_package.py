@@ -17,9 +17,9 @@ from topmind_handoff.compile import startup_read  # noqa: E402
 from topmind_handoff.package import (  # noqa: E402
     APPENDIX_MARK,
     PACKAGE_VERSION,
-    LegacyPlan,
-    apply_legacy_plan,
-    legacy_import_plan,
+    HostMergePlan,
+    apply_host_merge,
+    plan_host_merge,
     render_package,
     replay_package,
 )
@@ -95,7 +95,7 @@ refreshed: 2026-10-12
             self.assertIn("卡片标记甲", package)
             self.assertIn("Grok-demo-sync#1", package)
             self.assertIn(APPENDIX_MARK, package)
-            self.assertIn("## 10. 操作附录", package)
+            self.assertIn("## 操作附录", package)
 
             with tempfile.TemporaryDirectory() as other:
                 dest = Path(other)
@@ -130,7 +130,7 @@ refreshed: 2026-10-12
         self.assertNotIn("```ops", package)
         local = {"anchors": {"称呼": "李四"}, "claims": {"pref-keep": "留下这条"}}
         with self.assertRaises(ValueError) as raised:
-            legacy_import_plan(package, local)
+            plan_host_merge(package, local)
         self.assertIn("没有操作附录", str(raised.exception))
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)
@@ -145,27 +145,24 @@ refreshed: 2026-10-12
             self.assertNotIn("pref-zh", (dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"))
             self.assertNotIn("boundaries.ledger", (dest / "outbox" / "Grok-demo-sync.md").read_text(encoding="utf-8"))
 
-    def test_legacy_section_6_is_not_stored_as_a_fact(self) -> None:
+    def test_boundary_section_is_not_stored_as_a_fact(self) -> None:
         package = f"""\
 ---
 handoff_version: "{PACKAGE_VERSION}"
 ---
 
-## 5. 事实与记忆（Facts & memories）
+## 偏好
 
 - 偏好深色 {{id:pref-new}}
 - 已撤回：旧偏好 {{id:pref-old}}
 
-## 6. 边界（Boundaries）
+## 边界
 
 - 不携带记账明细 {{id:boundaries.ledger}}
 - 已撤回：旧边界 {{id:boundaries.old}}
-
-## 边界
-
 - 人类写下的边界 {{id:boundaries.human}}
 
-## 7. 其他
+## 事实
 
 - 另一事实 {{id:fact-next}}
 
@@ -173,7 +170,7 @@ handoff_version: "{PACKAGE_VERSION}"
 ```
 """
         local = {"anchors": {}, "claims": {"pref-keep": "留下这条", "boundaries.old": "本地旧边界"}}
-        plan = legacy_import_plan(package, local)
+        plan = plan_host_merge(package, local)
         self.assertNotIn("boundaries.ledger", plan.additions)
         self.assertNotIn("boundaries.old", plan.additions)
         self.assertNotIn("boundaries.ledger", plan.suggested_deletions)
@@ -185,7 +182,7 @@ handoff_version: "{PACKAGE_VERSION}"
         self.assertIn("fact-next", plan.additions)
         self.assertIn("pref-old", plan.suggested_deletions)
         self.assertIn("boundaries.old", plan.omitted_local_ids)
-        applied = apply_legacy_plan(plan, local, confirmed=True)
+        applied = apply_host_merge(plan, local, confirmed=True)
         self.assertNotIn("boundaries.ledger", applied["claims"])
         self.assertNotIn("不携带记账明细", " ".join(applied["claims"].values()))
         self.assertEqual(applied["claims"]["pref-new"], "偏好深色")
@@ -218,7 +215,7 @@ handoff_version: "{PACKAGE_VERSION}"
                 "pref-vim": "默认 Vim",
             },
         }
-        plan = legacy_import_plan(package, local)
+        plan = plan_host_merge(package, local)
         self.assertEqual(plan.anchor_conflicts["称呼"], ("李四", "张三"))
         self.assertEqual(plan.anchor_fills["时区"], "Asia/Shanghai")
         self.assertEqual(plan.anchor_fills["语言"], "zh-CN")
@@ -237,9 +234,9 @@ handoff_version: "{PACKAGE_VERSION}"
         self.assertIn("pref-keep", plan.omitted_local_ids)
         self.assertNotIn("pref-theme", plan.omitted_local_ids)
 
-        untouched = apply_legacy_plan(plan, local, confirmed=False)
+        untouched = apply_host_merge(plan, local, confirmed=False)
         self.assertEqual(untouched, local)
-        applied = apply_legacy_plan(plan, local, confirmed=True)
+        applied = apply_host_merge(plan, local, confirmed=True)
         self.assertEqual(applied["anchors"]["称呼"], "李四")
         self.assertEqual(applied["anchors"]["时区"], "Asia/Shanghai")
         self.assertEqual(applied["anchors"]["语言"], "zh-CN")
@@ -258,33 +255,33 @@ handoff_version: "{PACKAGE_VERSION}"
                 {"text": "时区：UTC", "id": "tz-b"},
             ]
         ) + "\n```ops\n```\n"
-        split_plan = legacy_import_plan(split, {"anchors": {"时区": ""}, "claims": {}})
+        split_plan = plan_host_merge(split, {"anchors": {"时区": ""}, "claims": {}})
         self.assertNotIn("时区", split_plan.anchor_fills)
         self.assertEqual(split_plan.anchor_conflicts["时区"], ("Asia/Shanghai", "UTC"))
-        split_applied = apply_legacy_plan(split_plan, {"anchors": {"时区": ""}, "claims": {}}, confirmed=True)
+        split_applied = apply_host_merge(split_plan, {"anchors": {"时区": ""}, "claims": {}}, confirmed=True)
         self.assertEqual(split_applied["anchors"]["时区"], "")
 
         mixed = """\
-## 5. 事实与记忆（Facts & memories）
+## 事实
 
 - 新说法 {id:pref-vim}
 - 已撤回：旧说法 {id:pref-vim}
 """
-        mixed_plan = legacy_import_plan(mixed, local)
+        mixed_plan = plan_host_merge(mixed, local)
         self.assertNotIn("pref-vim", mixed_plan.additions)
         self.assertIn("pref-vim", mixed_plan.suggested_deletions)
         self.assertIn("pref-vim", mixed_plan.text_conflicts)
-        mixed_applied = apply_legacy_plan(mixed_plan, local, confirmed=True)
+        mixed_applied = apply_host_merge(mixed_plan, local, confirmed=True)
         self.assertEqual(mixed_applied["claims"]["pref-vim"], "默认 Vim")
 
-        hostile = LegacyPlan(
+        hostile = HostMergePlan(
             additions={"pref-theme": "浅色方案", "pref-new": "偏好深色", "pref-split": "甲"},
             anchor_fills={"称呼": "张三", "时区": "Asia/Shanghai"},
             anchor_conflicts={"称呼": ("李四", "张三")},
             text_conflicts={"pref-split": ("甲", "乙"), "pref-theme": ("深色方案", "浅色方案")},
             suggested_deletions=["pref-vim"],
         )
-        forced = apply_legacy_plan(hostile, local, confirmed=True)
+        forced = apply_host_merge(hostile, local, confirmed=True)
         self.assertEqual(forced["claims"]["pref-theme"], "深色方案")
         self.assertEqual(forced["anchors"]["称呼"], "李四")
         self.assertEqual(forced["anchors"]["时区"], "Asia/Shanghai")
@@ -511,11 +508,11 @@ refreshed: 2026-10-13
             self.assertIn("## 边界", package)
             self.assertIn("```ops", package)
             local = {"anchors": {}, "claims": {}}
-            plan = legacy_import_plan(package, local)
+            plan = plan_host_merge(package, local)
             self.assertNotIn("boundaries.ledger", plan.additions)
             self.assertNotIn("不携带记账明细", " ".join(plan.additions.values()))
             self.assertEqual(plan.additions.get("pref-zh"), "全程中文")
-            applied = apply_legacy_plan(plan, local, confirmed=True)
+            applied = apply_host_merge(plan, local, confirmed=True)
             self.assertNotIn("boundaries.ledger", applied["claims"])
             self.assertEqual(applied["claims"].get("pref-zh"), "全程中文")
 
@@ -607,7 +604,7 @@ override.fact-due: 覆盖句只在本环境
             self.assertEqual(before, after)
             body = before.split("\n\n", 1)[1]
             self.assertIn(body.rstrip("\n"), first)
-            package_body, appendix = first.split("## 10. 操作附录（已反映在上文视图中）", 1)
+            package_body, appendix = first.split("## 操作附录（已反映在上文视图中）", 1)
             self.assertEqual(appendix.strip().splitlines()[0], APPENDIX_MARK)
             self.assertIn('handoff_version: "2"', first)
             self.assertIn("覆盖句只在本环境", package_body)
@@ -682,7 +679,7 @@ refreshed: {today.isoformat()}
             self.assertIn("- 称呼：张三 {id:identity.name} （未复核）", package)
             self.assertIn("- 年轻事实 {id:fact-young}", package)
             self.assertNotIn("- 年轻事实 {id:fact-young} （未复核）", package)
-            held = legacy_import_plan(
+            held = plan_host_merge(
                 package,
                 {"anchors": {"称呼": "张三"}, "claims": {"fact-young": "年轻事实"}},
             )
@@ -698,7 +695,7 @@ refreshed: {today.isoformat()}
             self.assertNotIn("旧事实", unkeyed)
             self.assertNotIn("称呼：张三", unkeyed)
             self.assertNotIn("identity.name", unkeyed)
-            empty = legacy_import_plan(package, {"anchors": {}, "claims": {}})
+            empty = plan_host_merge(package, {"anchors": {}, "claims": {}})
             self.assertEqual(empty.anchor_fills.get("称呼"), "张三")
             self.assertEqual(empty.additions.get("fact-old"), "旧事实")
             self.assertEqual(empty.additions.get("fact-young"), "年轻事实")

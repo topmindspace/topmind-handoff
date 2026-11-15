@@ -25,6 +25,7 @@ REVIEW_DAYS = {
     "boundaries": 180,
     "preference": 90,
     "project": 30,
+    "work": 30,
     "fact": 30,
 }
 CARD_STALE_DAYS = 90
@@ -83,6 +84,32 @@ def safe_origin(origin: str) -> str:
     if Path(name).name != name:
         raise ValueError("origin_id 必须是单个路径段")
     return name
+
+
+def safe_claim_id(claim_id: str) -> str:
+    """Validate a claim id so it stays single-line and parseable inside `{id:...}`."""
+    assert_private_text(claim_id)
+    cleaned = claim_id.strip()
+    if not cleaned or any(ch in cleaned for ch in ("{", "}", "\n", "\r", "\t", " ", "\x00")):
+        raise ValueError("id 必须是非空的单行标识，且不含空格或花括号")
+    return cleaned
+
+
+def safe_scope(scope: str) -> str:
+    """Validate `shared`, `scenario:<name>`, or `origin:<origin_id>`."""
+    assert_private_text(scope)
+    cleaned = scope.strip() or "shared"
+    if cleaned == "shared":
+        return "shared"
+    if cleaned.startswith("scenario:"):
+        target = cleaned.split(":", 1)[1]
+        if scenario_filename(target) is None:
+            raise ValueError("场景名必须是单个路径段")
+        return f"scenario:{target}"
+    if cleaned.startswith("origin:"):
+        target = safe_origin(cleaned.split(":", 1)[1])
+        return f"origin:{target}"
+    raise ValueError("scope 必须是 shared、scenario:<场景> 或 origin:<origin_id>")
 
 
 def scenario_filename(name: str) -> str | None:

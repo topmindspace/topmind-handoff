@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from topmind_handoff.admin import init_memory_repo, organize_repo
 from topmind_handoff.compile import append_outbox, compile_repo, save_environment_card, startup_read, status_is_valid
-from topmind_handoff.package import legacy_import_plan, render_package, replay_package
+from topmind_handoff.package import plan_host_merge, render_package, replay_package
 
 
 def put(root: Path, name: str, text: str) -> None:
@@ -195,7 +195,7 @@ class HardeningTests(unittest.TestCase):
                 dest = root / "receive"
                 for receiver in (
                     lambda: replay_package(dest, package, confirmed=True),
-                    lambda: legacy_import_plan(package, {}),
+                    lambda: plan_host_merge(package, {}),
                 ):
                     with self.assertRaises(ValueError) as raised:
                         receiver()

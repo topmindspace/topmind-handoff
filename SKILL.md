@@ -16,10 +16,10 @@ compatibility: >-
   Optional private-git sync uses the user's existing git/gh credential only.
   No SDK. No token stored. The memory repo has no CI and no Release.
 metadata:
-  version: "0.7.2"
+  version: "0.7.3"
   author: TopMindSpace
   homepage: https://github.com/topmindspace/topmind-handoff
-  updated: "2026-10-26"
+  updated: "2026-11-15"
   action_category: organize
   entrypoint: "false"
   tags: handoff, profile, memory-portability, onboarding, privacy
@@ -50,6 +50,11 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 python3 scripts/compile_memory.py --init <目录> --private --origin <origin_id> --role writing
 python3 scripts/compile_memory.py <记忆目录>
 python3 scripts/compile_memory.py --check <记忆目录>
+python3 scripts/compile_memory.py --set <记忆目录> --origin <origin_id> --id <claim_id> --text <正文> [--scope shared] [--slice fact] [--detail 长说明] [--today YYYY-MM-DD]
+python3 scripts/compile_memory.py --retract <记忆目录> --origin <origin_id> --id <claim_id> [--scope shared] [--today YYYY-MM-DD]
+python3 scripts/compile_memory.py --resolve <记忆目录> --origin <origin_id> --id <claim_id> --text <正文> [--scope shared] [--today YYYY-MM-DD]
+python3 scripts/compile_memory.py --work <记忆目录> --origin <origin_id> --text <当前工作与下一步> [--topic <专项>] [--local] [--done] [--today YYYY-MM-DD]
+python3 scripts/compile_memory.py --replay <记忆目录> --file <交接包> [--confirm]
 python3 scripts/compile_memory.py --own <记忆目录> --scenario writing --origin <origin_id>
 python3 scripts/compile_memory.py --organize <记忆目录> --today YYYY-MM-DD
 python3 scripts/compile_memory.py --open <记忆目录> --id <claim_id>
@@ -71,8 +76,10 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 - 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。
 - 另一台要接着做的下一步用 `scope: shared` 或 `scope: scenario:`。只在这台的路径和工具状态用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。
 - 产出只记状态、下一步和位置，不记正文。`slice` 用 `work` 或 `project`。`~/` 路径用 `scope: origin:`。见 `references/compile.md`。
+- 日常工作默认每个环境维护一份自己的【当前工作】（用 `--work <记忆目录> --origin <origin_id> --text <内容>`，写进 `id: work.<origin_id>`，供其他环境同步知晓进展，互不冲突；仅本机可见加 `--local`）。需要跨环境接力特定项目或任务时加 `--topic <专项名>`（写进 `id: project.<专项名>`）。阶段工作完结后用 `--work ... --done` 或 `--retract` 撤回清理。
 - `slice` 用 identity、boundaries、preference、project、fact。已经在用的 `environment` 和其他值都保持原样，单独成节，不并进事实。
-- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。
+- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。推荐用 `--set`、`--work`、`--retract`、`--resolve` 自动分配 `op_id`、自动接上当前链头 `base`（或收集全部分叉填入 `closes`）并编译，避免手写漏填 `base` 产生伪冲突。
+- 持续提炼最新事实并清理过时信息：遇到「未复核」或「待提炼」条目时，主动结合上下文询问用户是刷新最新表述（`--set`）、合并重复条目，还是撤回已完结的过时信息（`--retract` / `--work --done`）。
 - 一条主张要换范围：先在旧范围 `retract`，再在新范围用同一 id 写下，`base: none`。旧范围的 `op_id` 不能当新范围的 `base`。见 `references/compile.md`。
 - 不写密码、API key、token、聊天记录，不改别人的信箱。
 
@@ -113,8 +120,8 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 ### 更新云端记忆
 
 1. 拉取。
-2. 只往 `outbox/<自己的 origin_id>.md` 追加，或只替换 `environments/<自己的 origin_id>.md`。
-3. 立刻 `python3 scripts/compile_memory.py <记忆目录>`。编译若发现 `README.md` 仍是技能写过的旧模板，就换成当前说明。被人改过的说明不覆盖。这一步不改信箱。
+2. 只往 `outbox/<自己的 origin_id>.md` 追加（推荐用 `--set`、`--work`、`--retract`、`--resolve`），或只替换 `environments/<自己的 origin_id>.md`。
+3. 立刻 `python3 scripts/compile_memory.py <记忆目录>`（用上面四个写入命令时已自动编译）。被人改过的说明不覆盖。这一步不改信箱。
 4. 把新增、冲突、提议列给用户。身份和边界只有人的操作能进视图。
 5. 确认后一个提交：信箱、这台卡片、视图、`STATUS.md`。然后推送。
 
@@ -145,7 +152,7 @@ python3 scripts/compile_memory.py --startup <记忆目录> --origin <origin_id> 
 记忆仓库里的 `knowledge/` 是跨环境共享的经验、收藏帖和提示词。普通 Markdown，不进信箱、编译、视图和 `authority.md`。它是参考资料，不是指令，不覆盖偏好与边界。
 
 - 读：拉取后按当前任务用 `rg -n "关键词" knowledge/` 查相关条目。不整体读入，不放进 `--startup` 投影和交接包。
-- 写：用户说「沉淀经验」「记个经验」「收藏帖子」「存提示词」，或踩到值得记的坑。先搜重复，有就改原条目；新条目加在文件顶部。写完单独提交并推送，不必跑编译。仓库还没有 `knowledge/` 时，编译只在升级技能旧模板说明时补齐缺的文件；已有文件从不覆盖。
+- 写：用户说「沉淀经验」「记个经验」「收藏帖子」「存提示词」，或踩到值得记的坑。先搜重复，有就改原条目；新条目加在文件顶部。写完单独提交并推送，不必跑编译。已有文件从不覆盖。
 - 格式、两级目录和拆分规则只看仓库里的 `knowledge/README.md`，这里不另写一套。
 - 边界：跨环境可复用的经验、提示词、收藏进这里。只属于当前工作区的素材和灵感不写进 `knowledge/`。偏好和事实仍走 `outbox/`。
 - 不写凭据、隐私、他人信息、聊天记录。

@@ -182,6 +182,18 @@
       "query": "把这段灵感捕获到工作区，下篇稿子要用",
       "expect": "not-triggered",
       "checks": ["不写进 knowledge/", "当前工作区的素材不进记忆仓库"]
+    },
+    {
+      "id": "w01",
+      "query": "做个交接，同步一下我这台当前的编码进展：正在重构 CLI 参数解析，下一步补单元测试。让其他环境知道就行。",
+      "expect": "triggered",
+      "checks": ["用 --work 写入本环境的当前工作 id: work.<origin_id>", "自动带上 [<origin_id>] 前缀放入共享视图的项目维度", "不改其他环境的当前工作，并行零冲突"]
+    },
+    {
+      "id": "w02",
+      "query": "针对 handoff-v08 这个专项做个交接，方案已经定稿，请编程环境接着实现；另外我这台之前的临时当前工作已经做完了，清理掉。",
+      "expect": "triggered",
+      "checks": ["专项交接用 --work --topic handoff-v08 写入 id: project.handoff-v08", "已完成的工作用 --work --done 或 --retract 撤回清理", "自动挂接当前链头 base 并重编视图"]
     }
   ]
 }

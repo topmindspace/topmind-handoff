@@ -12,7 +12,11 @@
    改已有主题沿用原来的 id，`base` 填当前链头，不另起一条 id。
    不写密码、API key、token、聊天记录，不改别人的信箱。
 3. 知道才写。没有来源就标在 `text` 里「未核实」，不编造 `op_id` 以外的内容。`op_id` 用 `<origin_id>#` 加本文件内递增的号，不和已有号重复。
-4. 只追加 `outbox/<自己的 origin_id>.md`。要改这台的路径、连接器、已装技能或覆盖项，就整文件替换 `environments/<自己的 origin_id>.md`，并更新 `refreshed`。
+4. 只追加 `outbox/<自己的 origin_id>.md`（推荐直接用 `--set`、`--work`、`--retract`、`--resolve` 自动分配 `op_id`、自动接上当前链头 `base` 并重编）。要改这台的路径、连接器、已装技能或覆盖项，就整文件替换 `environments/<自己的 origin_id>.md`，并更新 `refreshed`。
+   - 记录或同步本环境【当前工作】：`python3 scripts/compile_memory.py --work <记忆目录> --origin <origin_id> --text "<状态、下一步、位置>"`（仅本机可见加 `--local`；针对特定项目交接加 `--topic <专项名>`；完结清理加 `--done`）。
+   - 新增或更新记忆主张：`python3 scripts/compile_memory.py --set <记忆目录> --origin <origin_id> --id <id> --text "<正文>" [--scope shared] [--slice preference]`。
+   - 撤回过时条目：`python3 scripts/compile_memory.py --retract <记忆目录> --origin <origin_id> --id <id>`。
+   - 裁决分叉冲突：`python3 scripts/compile_memory.py --resolve <记忆目录> --origin <origin_id> --id <id> --text "<裁决后正文>"`。
 5. 运行 `python3 scripts/compile_memory.py <记忆目录>`。`--check` 必须通过。
 6. 给用户看一段短确认：新增了哪些 id、哪几条变成未裁决、哪几条只是提议、卡片改了什么、脱敏删了什么。用户点头后再提交。
 7. 同一次提交包含信箱、这台卡片、`views/` 和 `STATUS.md`。用户没说「只本地」才推送。
@@ -38,7 +42,7 @@ python3 scripts/compile_memory.py --init <空目录> --private --origin <origin_
 python3 scripts/compile_memory.py --render <记忆目录> --origin <origin_id> --out <称呼>-handoff-YYYYMMDD.md
 ```
 
-包是 `handoff_version: "2"`。正文和 `--startup` 是同一份投影：带覆盖的共享视图、一个场景、本环境范围、冲突、未复核、环境卡片，以及 `## 10` 操作附录。
+包的 `handoff_version` 是 `"2"`。正文和 `--startup` 是同一份投影：带覆盖的共享视图、一个场景、本环境范围、冲突、未复核、环境卡片，以及 `## 操作附录`。
 附录声明这些操作已经反映在视图里。渲染不推送，也不改其他环境的信箱。
 
 交给用户时附上分享警告（`references/privacy.md`）。回执只给路径、冲突条数、附录里的 `op_id` 个数。不复述全文。

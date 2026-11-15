@@ -49,7 +49,7 @@ jobs:
           python3 -m pip install --quiet skills-ref
           agentskills validate "$PWD"
 
-      # 版本一致、接收指引模板与 assets 同步、引用存在、快照选举只在编译规则一处
+      # 版本一致、接收指引模板与 assets 同步、引用存在
       - name: Repo checks
         run: |
           set -euo pipefail

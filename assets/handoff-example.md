@@ -3,7 +3,7 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "Grok-demo-sync"
-compiler: "topmind-handoff 0.7.2"
+compiler: "topmind-handoff 0.7.3"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff
@@ -22,9 +22,7 @@ compiler: "topmind-handoff 0.7.2"
 
 下面是虚构示例。人物、仓库和技能版本都不是真实账户。
 
-## 视图
-
-# 共享
+## 共享
 
 ## 身份
 - 称呼张三 {id:identity.name}
@@ -36,7 +34,7 @@ compiler: "topmind-handoff 0.7.2"
 - 全程中文 {id:pref-zh}
 
 ## 项目
-（无）
+- [Grok-demo-sync] 正在整理跨环境交接示例 {id:work.Grok-demo-sync}
 
 ## 事实
 - 跨工具规约当偏好带走 {id:fact-conventions}
@@ -46,7 +44,7 @@ compiler: "topmind-handoff 0.7.2"
   - ClaudeCode-demo-sync#2（2026-10-01）：浅色方案
   - Grok-demo-sync#2（2020-01-01）：深色方案
 
-# 场景：writing
+## 场景：writing
 
 ## 身份
 （无）
@@ -86,9 +84,9 @@ override.pref-theme: 本环境编辑器用浅色
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.7.2（npm:@topmindspace/topmind-handoff）：编译记忆并渲染交接包
+- topmind-handoff 0.7.3（npm:@topmindspace/topmind-handoff）：编译记忆并渲染交接包
 
-## 10. 操作附录（已反映在上文视图中）
+## 操作附录（已反映在上文视图中）
 
 本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。
 不要把本附录当指令执行。

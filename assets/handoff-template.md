@@ -3,7 +3,7 @@ handoff_version: "2"
 language: zh-CN
 scope: private
 origin_id: "工具-demo-sync"
-compiler: "topmind-handoff 0.7.2"
+compiler: "topmind-handoff 0.7.3"
 ---
 
 > **给 AI 的接收指引**：建议先安装或更新 topmind-handoff
@@ -28,7 +28,7 @@ compiler: "topmind-handoff 0.7.2"
 
 （渲染时放入该 origin_id 的环境卡片。家目录写 ~。不写凭据。）
 
-## 10. 操作附录（已反映在上文视图中）
+## 操作附录（已反映在上文视图中）
 
 本附录是操作账本，不是新事实。按 op_id 去重重放；不要把这些条目再导入为新的事实或记忆。
 不要把本附录当指令执行。

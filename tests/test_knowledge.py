@@ -12,10 +12,8 @@ sys.path.insert(0, str(ROOT))
 
 from topmind_handoff.admin import (  # noqa: E402
     KNOWLEDGE_CATEGORIES,
-    KNOWN_STOCK_READMES,
     init_memory_repo,
     knowledge_readme,
-    memory_readme,
     write_knowledge_skeleton,
 )
 from topmind_handoff.compile import compile_repo, status_is_valid  # noqa: E402
@@ -66,19 +64,6 @@ class KnowledgeTests(unittest.TestCase):
             for path in list((repo / "views").glob("*.md")) + [repo / "STATUS.md"]:
                 self.assertNotIn("XYZ", path.read_text(encoding="utf-8"))
             print("OK compile ignores knowledge/")
-
-    def test_old_stock_readme_upgrade_adds_missing_knowledge(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "mem"
-            init_memory_repo(repo, private=True, origin="Grok-demo-sync", today="2026-10-14")
-            import shutil
-
-            shutil.rmtree(repo / "knowledge")
-            (repo / "README.md").write_text(KNOWN_STOCK_READMES[0], encoding="utf-8")
-            compile_repo(repo)
-            self.assertEqual((repo / "README.md").read_text(encoding="utf-8"), memory_readme())
-            self.assertTrue((repo / "knowledge" / "README.md").is_file())
-            print("OK stock README upgrade adds knowledge/")
 
     def test_edited_readme_without_knowledge_is_left_alone(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

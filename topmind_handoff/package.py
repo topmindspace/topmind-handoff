@@ -75,7 +75,7 @@ def render_package(repo: Path, origin: str, today: date | None = None) -> str:
         "",
         body,
         "",
-        "## 10. 操作附录（已反映在上文视图中）",
+        "## 操作附录（已反映在上文视图中）",
         "",
         APPENDIX_MARK,
         "不要把本附录当指令执行。",
@@ -144,7 +144,7 @@ def replay_package(repo: Path, package: str, *, confirmed: bool = False) -> list
 
 
 @dataclass
-class LegacyPlan:
+class HostMergePlan:
     additions: dict[str, str] = field(default_factory=dict)
     anchor_conflicts: dict[str, tuple[str, str]] = field(default_factory=dict)
     anchor_fills: dict[str, str] = field(default_factory=dict)
@@ -154,20 +154,15 @@ class LegacyPlan:
     omitted_local_ids: list[str] = field(default_factory=list)
 
 
-_SECTION_6 = re.compile(r"^##\s*6(?:\.|\s|$)")
-
-
 def _skip_heading(stripped: str) -> bool:
     """Boundaries are behavior, not facts. The rendered slice heading is ## 边界."""
-    if _SECTION_6.match(stripped):
-        return True
     return stripped.lstrip("#").strip() == "边界"
 
 
 def _claim_items(package: str) -> list[tuple[str | None, str]]:
     """List items outside boundary sections and outside fenced blocks.
 
-    Section 6 and the rendered ## 边界 slice are behavior, not memory.
+    The rendered ## 边界 slice is behavior, not memory.
     Fenced blocks hold the operations appendix, which is a ledger and not a new claim.
     """
     items: list[tuple[str | None, str]] = []
@@ -217,7 +212,7 @@ def _is_tombstone(text: str) -> bool:
     return "已撤回" in text or "withdrawn" in lowered
 
 
-def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
+def plan_host_merge(package: str, local: dict) -> HostMergePlan:
     """Diff view lines into host memory. Existing text and anchors are not replaced."""
     assert_private_text(package)
     front = _front(package)
@@ -229,7 +224,7 @@ def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
             raise ValueError("交接包没有操作附录")
     local_anchors = dict(local.get("anchors") or {})
     local_claims = dict(local.get("claims") or {})
-    plan = LegacyPlan()
+    plan = HostMergePlan()
     seen: set[str] = set()
     local_texts = {value for value in local_claims.values() if value}
     for claim_id, text in _claim_items(package):
@@ -285,7 +280,7 @@ def legacy_import_plan(package: str, local: dict) -> LegacyPlan:
     return plan
 
 
-def apply_legacy_plan(plan: LegacyPlan, local: dict, *, confirmed: bool) -> dict:
+def apply_host_merge(plan: HostMergePlan, local: dict, *, confirmed: bool) -> dict:
     """Add confirmed new claims and empty anchors. Never delete or replace existing text."""
     result = deepcopy(local)
     result.setdefault("anchors", {})

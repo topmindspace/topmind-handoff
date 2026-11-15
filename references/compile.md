@@ -7,7 +7,6 @@
 python3 scripts/compile_memory.py <记忆目录>
 ```
 
-不要用整包的 generated_at 选举当前事实，也不要删除旧文件夹。
 记忆仓库不配 workflow，不做 Release，不向用户要 token。没有定时任务，没有常驻进程。
 
 ## 目录
@@ -44,7 +43,8 @@ human 用 set / retract 将某个 id 标为身份或边界后，这个 id 保持
 跨工具都适用的偏好用 `scope: shared`。只在某个场景成立的习惯用 `scenario:`，不写入 shared。另一台要接着做的下一步用 `shared` 或 `scenario:`。只在这台磁盘上的路径和工具状态用 `origin:`。技能版本和连接器写在环境卡片上，不写成共享事实。
 
 产出是一条主张，不是文件。`text` 写状态、下一步、位置。位置写 `owner/name` 的路径，或这台的 `~/` 路径。`~/` 路径用 `scope: origin:`。`slice` 用 `work` 或 `project`。不把正文、图片、压缩包写进信箱、`facts/` 或交接包。用户提到稿件、交付包或仓库时，确认后追加这一条。不扫描磁盘。
-改一条已有主题时沿用原来的 id，`base` 填当前链头，不另起一条 id。
+日常工作默认每个环境维护一份自己的【当前工作】（`id: work.<origin_id>`，`slice: project`，默认 `scope: shared` 以便跨环境信息同步；加 `--local` 则写入 `scope: origin:<origin_id>`、`id: work.current`）。指定跨环境接力的专项任务时用 `--work --topic <专项名>`（写入 `id: project.<专项名>`）。工作完结后加 `--done` 追加 `retract` 清理。
+改一条已有主题时沿用原来的 id，`base` 填当前链头，不另起一条 id。可以用 `--set`、`--work`、`--retract`、`--resolve` 让脚本自动分配 `op_id`、自动查询当前唯一链头填入 `base`（或收集全部分叉填入 `closes`）并立即编译，避免手写漏填 `base` 产生伪冲突。
 换范围时，旧范围和新范围是两条链。先在旧范围 `retract`，`base` 填那条链的当前链头。再在新范围 `set` 同一 id，`base: none`。新范围的 `base` 不要填旧范围的 `op_id`：对不上这条链，操作就不生效。旧范围不撤回的话，两个范围各留一条当前说法。
 锚点正文以「称呼：」「对本智能体的称呼：」「语言：」「时区：」开头。接收方靠这个开头认出锚点。后面的字是值，复核标签不算正文。
 场景在 `authority.md` 里有主人时，主人以外、且不是 `human` 的 `set` / `retract` 同样只记成提议。`op: propose` 永远不成为链头。

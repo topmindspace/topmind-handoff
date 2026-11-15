@@ -68,7 +68,7 @@ refreshed: 2026-10-21
 连接器：GitHub，读写自己的仓库
 
 已装技能：
-- topmind-handoff 0.7.1（npm:@topmindspace/topmind-handoff）
+- topmind-handoff 0.7.3（npm:@topmindspace/topmind-handoff）
 ```
 
 `role` 决定开工读取带上哪一个场景。字段说明在 [`references/environment.md`](../references/environment.md)。
@@ -89,7 +89,7 @@ refreshed: 2026-10-21
 
 ## 自说明
 
-`python3 scripts/compile_memory.py --init` 把下面这篇写到记忆仓库根的 `README.md`。两次初始化写出的字节相同。被人改过的说明，编译不覆盖。
+`python3 scripts/compile_memory.py --init` 把下面这篇写到记忆仓库根的 `README.md`。两次初始化写出的字节相同。
 
 <!-- memory-readme:start -->
 # 云端记忆
@@ -105,7 +105,8 @@ refreshed: 2026-10-21
 - 只在某个场景里成立的习惯用 `scope: scenario:<场景>`，不写入 shared。
 - 另一台要接着做的下一步用 `scope: shared` 或 `scope: scenario:<场景>`。只在这台的路径和工具状态用 `scope: origin:<origin_id>`。技能版本和连接器写在这台的环境卡片上，不写成共享事实。
 - 产出只记状态、下一步和位置，不记正文。`slice` 用 `work` 或 `project`。`~/` 路径用 `scope: origin:`。
-- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id。
+- 日常工作默认每个环境维护一份自己的【当前工作】（`--work`，写进 `id: work.<origin_id>`，跨环境同步进展且互不冲突；仅本机可见加 `--local`）；特定项目交接加 `--topic <专项名>`；完结加 `--done` 撤回。
+- 已有主题要改，沿用原来的 id，`base` 填当前链头，不另起一条 id（可用 `--set`、`--work`、`--retract`、`--resolve` 自动算 `op_id` 和 `base`）。
 - 换范围时先在旧范围撤回，再在新范围用同一 id 写下，`base: none`。
 - 不写密码、API key、token，不写聊天记录，不改别人的信箱。
 
